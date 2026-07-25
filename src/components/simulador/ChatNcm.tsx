@@ -96,8 +96,8 @@ export function ChatNcm({
           onChange={(e) => setDescricao(e.target.value)}
         />
         <p className="text-xs text-muted">
-          A IA reformula sua descrição em termos técnicos e faz até 5 perguntas para sugerir de 2 a
-          3 candidatos de NCM.
+          A IA reformula sua descrição em termos técnicos e faz até 5 perguntas para sugerir
+          candidatos de NCM.
         </p>
         <button className="btn-primary" onClick={iniciar} disabled={descricao.trim().length < 2}>
           Iniciar descoberta
@@ -187,7 +187,12 @@ export function ChatNcm({
                   }}
                 />
                 <div>
-                  <div className="font-mono text-sm font-semibold text-ink">{c.ncm}</div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-sm font-semibold text-ink">{c.ncm}</span>
+                    {c.fonte === "ia" ? (
+                      <span className="badge bg-accent-bg text-accent-text">Sugerido pela IA</span>
+                    ) : null}
+                  </div>
                   <div className="text-sm text-ink2">{c.descricao}</div>
                   <div className="mt-1 text-xs text-muted">{c.categoria}</div>
                 </div>

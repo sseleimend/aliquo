@@ -51,8 +51,16 @@ export async function gerarPdf({
     if (descricaoProduto) kv("Produto informado", descricaoProduto);
     kv("UF de destino", resultado.uf);
     kv("Câmbio", `1 ${resultado.moeda} = ${formatBRL(resultado.taxaCambio)}`);
+    const qtd = resultado.quantidade ?? 1;
+    if (qtd > 1) {
+      kv("Quantidade", String(qtd));
+      kv(
+        "Valor unitário (FOB)",
+        formatMoeda(resultado.valorUnitarioMoeda ?? resultado.fobMoeda, resultado.moeda),
+      );
+    }
     kv(
-      "Valor FOB",
+      qtd > 1 ? "Valor FOB total" : "Valor FOB",
       `${formatMoeda(resultado.fobMoeda, resultado.moeda)} = ${formatBRL(resultado.fobBrl)}`,
     );
     kv("Frete internacional", formatBRL(resultado.freteInternacional));

@@ -7,6 +7,8 @@ export interface Candidato {
   categoria: string;
   score: number;
   confianca: number;
+  /** Origem do candidato: "base" = dataset de amostra; "ia" = sugerido pelo LLM. */
+  fonte?: "base" | "ia";
 }
 
 export interface NcmChatRequest {

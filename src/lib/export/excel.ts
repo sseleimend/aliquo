@@ -28,7 +28,12 @@ export async function gerarExcel({ resultado, descricaoProduto, createdAt }: Exp
   ws.addRow(["UF de destino", resultado.uf]);
   ws.addRow(["Moeda", resultado.moeda]);
   ws.addRow(["Taxa de câmbio", resultado.taxaCambio]);
-  ws.addRow(["Valor FOB (moeda)", resultado.fobMoeda]);
+  const qtd = resultado.quantidade ?? 1;
+  if (qtd > 1) {
+    ws.addRow(["Quantidade", qtd]);
+    ws.addRow(["Valor unitário (moeda)", resultado.valorUnitarioMoeda ?? resultado.fobMoeda]);
+  }
+  ws.addRow([qtd > 1 ? "Valor FOB total (moeda)" : "Valor FOB (moeda)", resultado.fobMoeda]);
   const rFob = ws.addRow(["Valor FOB (BRL)", resultado.fobBrl]);
   rFob.getCell(2).numFmt = CURRENCY_FMT;
   const rFrete = ws.addRow(["Frete internacional", resultado.freteInternacional]);
