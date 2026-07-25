@@ -1,0 +1,88 @@
+// Aliquo — protótipo. Banco SQLite local.
+// JSON é armazenado como String (SQLite não tem tipo JSON nativo).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  passwordHash String? // nulo quando o usuário entra via Google
+  image        String?
+  createdAt    DateTime @default(now())
+
+  despachantes     Despachante[]
+  custosRecorrentes CustoRecorrente[]
+  simulacoes       Simulacao[]
+  auditLogs        AuditLog[]
+}
+
+model Despachante {
+  id         String   @id @default(cuid())
+  userId     String
+  nome       String
+  cnpj       String?
+  contato    String?
+  honorarios Float    @default(0) // honorário padrão sugerido nas simulações
+  ativo      Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model CustoRecorrente {
+  id        String   @id @default(cuid())
+  userId    String
+  tipo      String // frete | thc | armazenagem | siscomex | afrmm | outro
+  descricao String
+  valor     Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Simulacao {
+  id               String   @id @default(cuid())
+  userId           String
+  ncm              String
+  descricaoProduto String?
+  uf               String
+  moeda            String
+  inputJson        String // entradas do usuário (valor, custos, etc.)
+  resultadoJson    String // breakdown completo calculado
+  landedCost       Float
+  createdAt        DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// RF12 — log de auditoria das alterações nos cadastros de despachantes/custos.
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String
+  entidade   String // Despachante | CustoRecorrente
+  entidadeId String
+  acao       String // criar | atualizar | remover
+  dadosAntes String? // snapshot JSON antes da alteração
+  dadosDepois String? // snapshot JSON depois da alteração
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
