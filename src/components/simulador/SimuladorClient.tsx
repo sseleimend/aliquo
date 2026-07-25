@@ -8,7 +8,7 @@ import { DisclaimerBanner } from "@/components/DisclaimerBanner";
 import { MoneyInput } from "@/components/MoneyInput";
 import { UF_LIST } from "@/lib/tax/rates";
 import { normalizeNcm } from "@/lib/ncm/dataset";
-import { formatBRL } from "@/lib/format";
+import { formatBRL, formatMoeda } from "@/lib/format";
 import type { TaxResult } from "@/lib/tax/types";
 
 const STEPS = ["NCM", "Valores & câmbio", "Custos variáveis", "Resultado"];
@@ -27,6 +27,7 @@ interface Custo {
 
 const emptyForm = {
   fobMoeda: "",
+  quantidade: "1",
   moeda: "USD",
   uf: "SP",
   freteInternacional: "",
@@ -116,7 +117,9 @@ export function SimuladorClient() {
     setNcmInfo({ descricao: data.descricao ?? null, aviso: data.aviso ?? null });
   }
 
-  const fobBrl = (Number(form.fobMoeda) || 0) * (cambio?.rate ?? 0);
+  const quantidade = Number(form.quantidade) || 0;
+  const fobTotalMoeda = (Number(form.fobMoeda) || 0) * (quantidade || 1);
+  const fobBrl = fobTotalMoeda * (cambio?.rate ?? 0);
   const vaPreview = fobBrl + (Number(form.freteInternacional) || 0) + (Number(form.seguroInternacional) || 0);
 
   async function calcular() {
@@ -129,7 +132,8 @@ export function SimuladorClient() {
         body: JSON.stringify({
           ncm,
           descricaoProduto: ncmDescricao,
-          fobMoeda: Number(form.fobMoeda) || 0,
+          valorUnitarioMoeda: Number(form.fobMoeda) || 0,
+          quantidade: Number(form.quantidade) || 1,
           moeda: form.moeda,
           uf: form.uf,
           freteInternacional: Number(form.freteInternacional) || 0,
@@ -170,7 +174,7 @@ export function SimuladorClient() {
     setErro(null);
   }
 
-  const podeIrValores = Number(form.fobMoeda) > 0 && form.uf && cambio;
+  const podeIrValores = Number(form.fobMoeda) > 0 && quantidade > 0 && form.uf && cambio;
 
   return (
     <div className="space-y-6">
@@ -274,15 +278,30 @@ export function SimuladorClient() {
         <div className="card space-y-4 p-5">
           <NcmChip ncm={ncm} descricao={ncmDescricao} />
 
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="label">Valor do produto (FOB)</label>
+              <label className="label">Valor unitário (FOB)</label>
               <MoneyInput
                 prefix={form.moeda}
                 value={Number(form.fobMoeda) || 0}
                 onValueChange={(n) => set("fobMoeda", n ? String(n) : "")}
               />
             </div>
+            <div>
+              <label className="label">Quantidade</label>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                inputMode="decimal"
+                className="input"
+                value={form.quantidade}
+                onChange={(e) => set("quantidade", e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="label">Moeda</label>
               <select className="input" value={form.moeda} onChange={(e) => set("moeda", e.target.value)}>
@@ -332,6 +351,12 @@ export function SimuladorClient() {
                 </em>
               ) : null}
             </span>
+            {quantidade > 1 ? (
+              <span className="text-ink2">
+                FOB total: <strong>{formatMoeda(fobTotalMoeda, form.moeda)}</strong>
+                <em className="ml-1 text-xs text-muted">({quantidade} un)</em>
+              </span>
+            ) : null}
             <span className="text-ink2">
               Valor aduaneiro estimado: <strong>{formatBRL(vaPreview)}</strong>
             </span>

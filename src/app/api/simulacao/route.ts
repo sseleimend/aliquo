@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getExchangeRate } from "@/lib/fx";
-import { calcularTributos } from "@/lib/tax/engine";
+import { calcularTributos, round2 } from "@/lib/tax/engine";
 import type { TaxInput } from "@/lib/tax/types";
 import { normalizeNcm } from "@/lib/ncm/dataset";
 
@@ -12,7 +12,8 @@ const money = z.coerce.number().min(0).default(0);
 const schema = z.object({
   ncm: z.string().min(1),
   descricaoProduto: z.string().max(2000).optional(),
-  fobMoeda: z.coerce.number().positive("Informe o valor do produto"),
+  valorUnitarioMoeda: z.coerce.number().positive("Informe o valor do produto"),
+  quantidade: z.coerce.number().positive("Informe a quantidade").default(1),
   moeda: z.string().min(1).default("USD"),
   uf: z.string().length(2, "Informe a UF de destino"),
   freteInternacional: money,
@@ -51,9 +52,14 @@ export async function POST(req: Request) {
   // Câmbio buscado automaticamente pelo sistema (autoritativo no servidor).
   const quote = await getExchangeRate(d.moeda);
 
+  // FOB total = valor unitário × quantidade (muitas importações têm >1 item).
+  const fobMoeda = round2(d.valorUnitarioMoeda * d.quantidade);
+
   const input: TaxInput = {
     ncm,
-    fobMoeda: d.fobMoeda,
+    fobMoeda,
+    quantidade: d.quantidade,
+    valorUnitarioMoeda: d.valorUnitarioMoeda,
     moeda: quote.currency,
     taxaCambio: quote.rate,
     uf,

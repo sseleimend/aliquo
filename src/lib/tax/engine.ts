@@ -53,6 +53,11 @@ export function calcularTributos(inputRaw: TaxInput): TaxResult {
     uf: (inputRaw.uf || "").toUpperCase(),
   };
 
+  // Quantidade e valor unitário são informativos: o motor opera sobre o FOB
+  // TOTAL (fobMoeda). Se não vierem, assume 1 item e deriva o unitário.
+  const quantidade = num(inputRaw.quantidade) || 1;
+  const valorUnitarioMoeda = num(inputRaw.valorUnitarioMoeda) || round2(input.fobMoeda / quantidade);
+
   // 1) Valor aduaneiro (CIF) = mercadoria + frete + seguro (todos em BRL).
   const fobBrl = input.fobMoeda * input.taxaCambio;
   const valorAduaneiro = fobBrl + input.freteInternacional + input.seguroInternacional;
@@ -164,6 +169,8 @@ export function calcularTributos(inputRaw: TaxInput): TaxResult {
     moeda: input.moeda,
     taxaCambio: input.taxaCambio,
     fobMoeda: input.fobMoeda,
+    quantidade,
+    valorUnitarioMoeda,
     fobBrl: round2(fobBrl),
     freteInternacional: round2(input.freteInternacional),
     seguroInternacional: round2(input.seguroInternacional),

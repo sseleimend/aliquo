@@ -3,8 +3,12 @@
 export interface TaxInput {
   /** NCM confirmado pelo usuário (RF06). */
   ncm: string;
-  /** Valor da mercadoria (FOB) na moeda estrangeira. */
+  /** Valor da mercadoria (FOB) na moeda estrangeira — TOTAL (unitário × quantidade). */
   fobMoeda: number;
+  /** Quantidade de itens importados. Opcional (default 1). */
+  quantidade?: number;
+  /** Valor unitário (FOB) na moeda estrangeira. Opcional (informativo). */
+  valorUnitarioMoeda?: number;
   /** Moeda estrangeira (USD, EUR, CNY...). */
   moeda: string;
   /** Taxa de câmbio para BRL (1 unidade da moeda = X BRL). */
@@ -51,6 +55,8 @@ export interface TaxResult {
   taxaCambio: number;
 
   fobMoeda: number;
+  quantidade: number;
+  valorUnitarioMoeda: number;
   fobBrl: number;
   freteInternacional: number;
   seguroInternacional: number;

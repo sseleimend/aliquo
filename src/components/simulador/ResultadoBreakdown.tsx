@@ -33,9 +33,16 @@ export function ResultadoBreakdown({
       <section className="card p-4">
         <h3 className="mb-2 text-sm font-semibold text-ink">Valor aduaneiro (base CIF)</h3>
         <Linha
-          rot={`FOB (${formatMoeda(resultado.fobMoeda, resultado.moeda)} × ${formatBRL(
-            resultado.taxaCambio,
-          )})`}
+          rot={
+            (resultado.quantidade ?? 1) > 1
+              ? `FOB (${formatMoeda(
+                  resultado.valorUnitarioMoeda ?? resultado.fobMoeda,
+                  resultado.moeda,
+                )} × ${resultado.quantidade} un × ${formatBRL(resultado.taxaCambio)})`
+              : `FOB (${formatMoeda(resultado.fobMoeda, resultado.moeda)} × ${formatBRL(
+                  resultado.taxaCambio,
+                )})`
+          }
           val={resultado.fobBrl}
         />
         <Linha rot="Frete internacional" val={resultado.freteInternacional} />
