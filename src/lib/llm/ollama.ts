@@ -1,4 +1,9 @@
-import type { LLMCompleteOptions, LLMMessage, LLMProvider } from "@/lib/llm/types";
+import type {
+  LLMCompleteOptions,
+  LLMMessage,
+  LLMProvider,
+  LLMResposta,
+} from "@/lib/llm/types";
 
 // Provider Ollama Cloud via endpoint OpenAI-compatível (/v1/chat/completions).
 // Config: OLLAMA_BASE_URL, OLLAMA_API_KEY, OLLAMA_MODEL.
@@ -10,7 +15,8 @@ export function createOllamaProvider(): LLMProvider {
   return {
     name: "ollama",
     usaLLM: true,
-    async complete(messages: LLMMessage[], opts: LLMCompleteOptions = {}): Promise<string> {
+    async complete(messages: LLMMessage[], opts: LLMCompleteOptions = {}): Promise<LLMResposta> {
+      const inicio = Date.now();
       const res = await fetch(`${baseUrl}/v1/chat/completions`, {
         method: "POST",
         headers: {
@@ -38,8 +44,16 @@ export function createOllamaProvider(): LLMProvider {
 
       const data = (await res.json()) as {
         choices?: { message?: { content?: string } }[];
+        usage?: { prompt_tokens?: number; completion_tokens?: number };
       };
-      return data.choices?.[0]?.message?.content?.trim() ?? "";
+      return {
+        texto: data.choices?.[0]?.message?.content?.trim() ?? "",
+        provider: "ollama",
+        model,
+        latencyMs: Date.now() - inicio,
+        inputTokens: data.usage?.prompt_tokens,
+        outputTokens: data.usage?.completion_tokens,
+      };
     },
   };
 }

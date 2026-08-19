@@ -1,4 +1,9 @@
-import type { LLMCompleteOptions, LLMMessage, LLMProvider } from "@/lib/llm/types";
+import type {
+  LLMCompleteOptions,
+  LLMMessage,
+  LLMProvider,
+  LLMResposta,
+} from "@/lib/llm/types";
 
 // Provider Google Gemini (Generative Language API, v1beta:generateContent).
 // Config: GEMINI_API_KEY, GEMINI_MODEL, GEMINI_BASE_URL (opcional).
@@ -19,7 +24,8 @@ export function createGeminiProvider(): LLMProvider {
   return {
     name: "gemini",
     usaLLM: true,
-    async complete(messages: LLMMessage[], opts: LLMCompleteOptions = {}): Promise<string> {
+    async complete(messages: LLMMessage[], opts: LLMCompleteOptions = {}): Promise<LLMResposta> {
+      const inicio = Date.now();
       // A API do Gemini separa a instrução de sistema (`systemInstruction`) das
       // mensagens de conversa e usa o papel "model" no lugar de "assistant".
       const system = messages
@@ -57,10 +63,17 @@ export function createGeminiProvider(): LLMProvider {
 
       const data = (await res.json()) as {
         candidates?: { content?: { parts?: { text?: string }[] } }[];
+        usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
       };
-      return (
-        data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("").trim() ?? ""
-      );
+      return {
+        texto:
+          data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("").trim() ?? "",
+        provider: "gemini",
+        model,
+        latencyMs: Date.now() - inicio,
+        inputTokens: data.usageMetadata?.promptTokenCount,
+        outputTokens: data.usageMetadata?.candidatesTokenCount,
+      };
     },
   };
 }

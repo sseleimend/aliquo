@@ -1,4 +1,4 @@
-// Aliquo — protótipo. Banco SQLite local.
+// Aliquo — Fase 2. Banco SQLite local.
 // JSON é armazenado como String (SQLite não tem tipo JSON nativo).
 
 generator client {
@@ -10,19 +10,423 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  name         String?
-  passwordHash String? // nulo quando o usuário entra via Google
-  image        String?
-  createdAt    DateTime @default(now())
+// =====================================================================
+// Contas
+// =====================================================================
 
-  despachantes     Despachante[]
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  name            String?
+  passwordHash    String? // nulo quando o usuário entra via Google
+  image           String?
+  preferenciaModo String    @default("guiado") // guiado | rapido
+  aceiteTermosEm  DateTime?
+  createdAt       DateTime  @default(now())
+
+  despachantes      Despachante[]
   custosRecorrentes CustoRecorrente[]
-  simulacoes       Simulacao[]
-  auditLogs        AuditLog[]
+  auditLogs         AuditLog[]
+  empresas          Empresa[]
+  importacoes       Importacao[]
+  invoices          Invoice[]
+  assinaturas       Assinatura[]
+  usos              UsoMensal[]
+  eventosUso        EventoUso[]
 }
+
+// Empresa importadora — o regime tributário dela muda o cálculo (RF-B3).
+model Empresa {
+  id               String   @id @default(cuid())
+  userId           String
+  nome             String
+  cnpj             String?
+  regimeTributario String   @default("lucro_real") // lucro_real | lucro_presumido | simples_nacional
+  ufPadrao         String   @default("SP")
+  padrao           Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  importacoes Importacao[]
+
+  @@index([userId])
+}
+
+// =====================================================================
+// Base oficial (RNF-1 rastreabilidade, RNF-2 reimportação, RNF-6 auditoria)
+// =====================================================================
+
+// Uma versão = um arquivo oficial importado. Nunca é mutada: reimportar
+// cria uma nova versão, então simulações antigas continuam reproduzíveis.
+model BaseVersao {
+  id             String   @id @default(cuid())
+  tipo           String // nomenclatura | tec | tipi
+  ato            String // ex.: "Resolução Gecex nº 926/2026"
+  vigenteEm      String // texto publicado pela fonte
+  fonteUrl       String
+  hashArquivo    String // sha256 — reprodutibilidade
+  totalRegistros Int      @default(0)
+  ativa          Boolean  @default(false)
+  importadoEm    DateTime @default(now())
+
+  nomenclaturas NcmNomenclatura[]
+  aliquotasII   NcmAliquota[]     @relation("AliquotaOrigemII")
+  aliquotasIPI  NcmAliquota[]     @relation("AliquotaOrigemIPI")
+  importacoes   Importacao[]
+
+  @@index([tipo, ativa])
+}
+
+// Nomenclatura oficial completa (capítulo -> posição -> subposição -> item).
+// O texto oficial é CUMULATIVO na árvore: uma folha é frequentemente só
+// "-- Outros" e não tem sentido sozinha. Por isso guardamos `caminho`, a
+// linhagem concatenada — é o que vai para o índice FTS e para a tela.
+model NcmNomenclatura {
+  id           String  @id @default(cuid())
+  codigo       String  @unique // apenas dígitos (2, 4, 5, 6, 7 ou 8)
+  codigoFmt    String // como publicado, ex.: "8508.11.00"
+  nivel        String // capitulo | posicao | subposicao | item
+  parentCodigo String?
+  descricao    String // texto oficial cru do próprio nível, com travessões
+  caminho      String // linhagem oficial concatenada da raiz até aqui
+  dataInicio   String?
+  dataFim      String?
+  baseVersaoId String
+
+  baseVersao BaseVersao @relation(fields: [baseVersaoId], references: [id])
+
+  @@index([nivel])
+  @@index([parentCodigo])
+  @@index([baseVersaoId])
+}
+
+// Ponte de vocabulário: o usuário escreve "airfryer", a nomenclatura diz
+// "Aparelhos eletrotérmicos para uso doméstico". Sem isso o BM25 não acha.
+model NcmSinonimo {
+  id     String @id @default(cuid())
+  termo  String // normalizado, sem acento, minúsculo
+  codigo String // 4 ou 8 dígitos
+  peso   Float  @default(1)
+  origem String @default("curado") // curado | minerado | usuario
+
+  @@unique([termo, codigo])
+  @@index([termo])
+}
+
+// Alíquotas oficiais. II vem da TEC, IPI da TIPI — atos e vigências distintos,
+// por isso cada uma carrega sua própria versão de base.
+model NcmAliquota {
+  id            String   @id @default(cuid())
+  codigo        String // 8 dígitos, apenas números
+  ex            String   @default("") // Ex-tarifário; "" = alíquota geral
+  ii            Float?
+  ipi           Float?
+  ipiNT         Boolean  @default(false) // "NT" (não-tributado) != 0%
+  pis           Float? // nulo = usa a alíquota padrão do ruleset
+  cofins        Float?
+  origemII      String? // "TEC Anexo I" | "TEC Anexo II"
+  marcadorII    String? // "BK" | "BIT" — sinaliza lista de exceção
+  origemIPI     String?
+  iiBaseVersao  String?
+  ipiBaseVersao String?
+  atualizadoEm  DateTime @default(now())
+
+  baseII  BaseVersao? @relation("AliquotaOrigemII", fields: [iiBaseVersao], references: [id])
+  baseIPI BaseVersao? @relation("AliquotaOrigemIPI", fields: [ipiBaseVersao], references: [id])
+
+  @@unique([codigo, ex])
+  @@index([codigo])
+}
+
+// Mede a precisão real da classificação (alvo de 85% do PRD) e alimenta sinônimos.
+model NcmFeedback {
+  id                     String   @id @default(cuid())
+  userId                 String?
+  descricaoOriginal      String
+  termosExpandidos       String   @default("[]") // JSON
+  candidatosJson         String   @default("[]") // JSON: códigos + rank
+  ncmEscolhido           String
+  escolhidoEstavaNaLista Boolean  @default(true) // false = alarme de recall
+  perguntasFeitas        Int      @default(0)
+  createdAt              DateTime @default(now())
+
+  @@index([escolhidoEstavaNaLista, createdAt])
+}
+
+// ICMS é estadual — fora da TEC/TIPI, tabela própria com fonte e vigência.
+model AliquotaUf {
+  id          String    @id @default(cuid())
+  uf          String
+  aliquota    Float
+  fecp        Float     @default(0) // adicional, separado — não embutido
+  vigenciaIni DateTime  @default(now())
+  vigenciaFim DateTime?
+  fonte       String    @default("estimativa")
+
+  @@unique([uf, vigenciaIni])
+  @@index([uf])
+}
+
+// =====================================================================
+// Câmbio (RF-C1) — cache persistente, substitui o Map em memória
+// =====================================================================
+
+model FxCotacao {
+  id         String   @id @default(cuid())
+  moeda      String
+  fonte      String // bcb-ptax | awesomeapi
+  finalidade String // fiscal | mercado
+  dataRef    String // "2026-08-15" — data da cotação, não do fetch
+  rate       Float
+  tipo       String   @default("venda")
+  asOf       DateTime // timestamp oficial da cotação
+  fetchedAt  DateTime @default(now())
+
+  importacoes Importacao[]
+
+  @@unique([moeda, fonte, finalidade, dataRef])
+  @@index([moeda, finalidade, dataRef])
+}
+
+// =====================================================================
+// Importações (semente do hub — RF-D1/D2/D3/D4)
+// =====================================================================
+
+model Importacao {
+  id        String  @id @default(cuid())
+  userId    String
+  empresaId String?
+  invoiceId String?
+
+  apelido          String?
+  status           String   @default("simulada") // rascunho | simulada | bloqueada | arquivada
+  uf               String
+  moeda            String
+  incoterm         String   @default("FOB")
+  modal            String? // maritimo | aereo | rodoviario
+  regimeTributario String   @default("lucro_real")
+  dataReferencia   DateTime @default(now())
+
+  // Rastreabilidade fiscal (RNF-1 / RNF-6) — colunas reais, não enterradas em JSON.
+  rulesetId    String
+  baseVersaoId String?
+
+  fxCotacaoId String?
+  fxRate      Float
+  fxFonte     String?
+  fxAsOf      DateTime?
+  fxDataRef   String?
+  fxStale     Boolean   @default(false)
+
+  contextoJson      String  @default("{}") // snapshot do TaxContext usado
+  inputJson         String
+  resultadoJson     String
+  landedCost        Float   @default(0)
+  landedCostEfetivo Float?
+  provisorio        Boolean @default(false) // alguma alíquota não confirmada
+
+  duplicadaDeId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  empresa    Empresa?          @relation(fields: [empresaId], references: [id])
+  invoice    Invoice?          @relation(fields: [invoiceId], references: [id])
+  fxCotacao  FxCotacao?        @relation(fields: [fxCotacaoId], references: [id])
+  baseVersao BaseVersao?       @relation(fields: [baseVersaoId], references: [id])
+  itens      ImportacaoItem[]
+  custos     ImportacaoCusto[]
+
+  @@index([userId])
+  @@index([userId, createdAt])
+  @@index([empresaId, status])
+}
+
+model ImportacaoItem {
+  id           String @id @default(cuid())
+  importacaoId String
+  ordem        Int    @default(0)
+
+  descricaoProduto    String?
+  ncm                 String
+  // Snapshot do texto oficial no momento da confirmação (RNF-1): se a base
+  // mudar depois, a simulação antiga continua mostrando o que o usuário viu.
+  ncmDescricaoOficial String?
+  ncmCaminhoOficial   String?
+  ncmFonte            String    @default("manual") // ia_confirmada | manual | reuso | invoice
+  ncmConfianca        Float?
+  ncmConfirmadoEm     DateTime?
+  atributosJson       String    @default("[]") // respostas de desambiguação {chave,valor}[]
+
+  quantidade         Float  @default(1)
+  unidade            String @default("un")
+  valorUnitarioMoeda Float  @default(0)
+  pesoLiquidoKg      Float?
+
+  // Sem alíquota oficial não se calcula; o usuário pode informar, e isso
+  // fica registrado como entrada dele, nunca como dado oficial.
+  aliquotaIIManual  Float?
+  aliquotaIPIManual Float?
+
+  resultadoJson String?
+  landedCost    Float?
+
+  importacao Importacao @relation(fields: [importacaoId], references: [id], onDelete: Cascade)
+
+  @@index([importacaoId])
+  @@index([ncm])
+}
+
+// Custos como linhas, não colunas fixas: o engine precisa saber de cada um
+// se compõe o valor aduaneiro, se entra na base do ICMS e como ratear.
+model ImportacaoCusto {
+  id           String @id @default(cuid())
+  importacaoId String
+
+  chave                String // frete | seguro | siscomex | afrmm | thc | armazenagem | despachante | outro
+  rotulo               String
+  valor                Float   @default(0)
+  moeda                String  @default("BRL")
+  compoeValorAduaneiro Boolean @default(false)
+  entraBaseIcms        Boolean @default(false)
+  criterioRateio       String  @default("valor") // valor | peso | quantidade
+  origem               String  @default("manual") // manual | recorrente | sugerido
+
+  importacao Importacao @relation(fields: [importacaoId], references: [id], onDelete: Cascade)
+
+  @@index([importacaoId])
+}
+
+model Invoice {
+  id     String @id @default(cuid())
+  userId String
+
+  numero      String?
+  fornecedor  String?
+  dataEmissao String?
+  moeda       String  @default("USD")
+  valorTotal  Float   @default(0)
+
+  arquivoKey     String? // chave no FileStore — nunca um caminho público
+  arquivoNome    String?
+  arquivoMime    String?
+  arquivoTamanho Int?
+  arquivoSha256  String?
+
+  extraidoJson String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itens       InvoiceItem[]
+  importacoes Importacao[]
+
+  @@index([userId, createdAt])
+}
+
+model InvoiceItem {
+  id            String  @id @default(cuid())
+  invoiceId     String
+  descricao     String
+  ncm           String?
+  quantidade    Float   @default(1)
+  valorUnitario Float   @default(0)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+}
+
+// =====================================================================
+// Planos, assinatura e medição (RF-E1/E2, RNF-5)
+// =====================================================================
+
+model Plano {
+  id                  String  @id @default(cuid())
+  codigo              String  @unique // free | pro | business
+  nome                String
+  precoMensalCentavos Int     @default(0)
+  limitesJson         String  @default("{}") // {"simulacoesMes":5,"itensPorImportacao":1,...}
+  ativo               Boolean @default(true)
+  ordem               Int     @default(0)
+
+  assinaturas Assinatura[]
+}
+
+model Assinatura {
+  id            String    @id @default(cuid())
+  userId        String
+  planoId       String
+  status        String    @default("ativa") // ativa | trial | inadimplente | cancelada
+  periodoInicio DateTime  @default(now())
+  periodoFim    DateTime?
+
+  // Preenchidos quando um gateway for plugado; nulos no billing manual.
+  provider               String?
+  providerCustomerId     String?
+  providerSubscriptionId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plano Plano @relation(fields: [planoId], references: [id])
+
+  @@unique([userId])
+  @@index([planoId])
+}
+
+// Rollup barato para o gate de cota (RF-E2).
+model UsoMensal {
+  id          String @id @default(cuid())
+  userId      String
+  competencia String // "2026-08"
+  tipo        String // simulacao | ncm_chat | export_pdf | invoice_upload
+  total       Int    @default(0)
+
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, competencia, tipo])
+  @@index([userId])
+}
+
+// Detalhe por evento — serve o custo por operação (RNF-5).
+model EventoUso {
+  id         String @id @default(cuid())
+  userId     String
+  tipo       String
+  quantidade Int    @default(1)
+
+  // Tokens são FATO, medidos na chamada. Custo é DERIVADO e pode não existir
+  // no momento da escrita: provider de assinatura (Ollama Cloud) só permite
+  // ratear a mensalidade depois de saber o volume do mês. Null = desconhecido,
+  // nunca 0 — zero é um custo, não uma ausência de informação.
+  inputTokens  Int?
+  outputTokens Int?
+  latencyMs    Int?
+  provider     String?
+  model        String?
+
+  modeloCusto           String? // porToken | assinatura | naoConfigurado
+  custoEstimadoCentavos Int? // BRL, quando calculável na hora
+
+  metaJson  String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([tipo, createdAt])
+}
+
+// =====================================================================
+// Cadastros auxiliares e auditoria (mantidos da Fase 1)
+// =====================================================================
 
 model Despachante {
   id         String   @id @default(cuid())
@@ -30,7 +434,7 @@ model Despachante {
   nome       String
   cnpj       String?
   contato    String?
-  honorarios Float    @default(0) // honorário padrão sugerido nas simulações
+  honorarios Float    @default(0)
   ativo      Boolean  @default(true)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -54,33 +458,15 @@ model CustoRecorrente {
   @@index([userId])
 }
 
-model Simulacao {
-  id               String   @id @default(cuid())
-  userId           String
-  ncm              String
-  descricaoProduto String?
-  uf               String
-  moeda            String
-  inputJson        String // entradas do usuário (valor, custos, etc.)
-  resultadoJson    String // breakdown completo calculado
-  landedCost       Float
-  createdAt        DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-}
-
-// RF12 — log de auditoria das alterações nos cadastros de despachantes/custos.
 model AuditLog {
-  id         String   @id @default(cuid())
-  userId     String
-  entidade   String // Despachante | CustoRecorrente
-  entidadeId String
-  acao       String // criar | atualizar | remover
-  dadosAntes String? // snapshot JSON antes da alteração
-  dadosDepois String? // snapshot JSON depois da alteração
-  createdAt  DateTime @default(now())
+  id          String   @id @default(cuid())
+  userId      String
+  entidade    String
+  entidadeId  String
+  acao        String // criar | atualizar | remover
+  dadosAntes  String?
+  dadosDepois String?
+  createdAt   DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

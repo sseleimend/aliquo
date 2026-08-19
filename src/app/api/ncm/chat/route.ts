@@ -2,10 +2,17 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getUserId } from "@/lib/auth";
 import { descobrirNcm } from "@/lib/ncm/classifier";
+import { consumirCota, QuotaExcedidaError, registrarEventoIA } from "@/lib/plans";
+
+const respostaSchema = z.object({
+  atributo: z.string().max(120),
+  valor: z.string().max(2000),
+  indice: z.coerce.number().int().min(0).optional(),
+});
 
 const schema = z.object({
   descricao: z.string().trim().min(2, "Descreva o produto").max(4000),
-  respostas: z.array(z.string().max(2000)).max(10).optional(),
+  respostas: z.array(respostaSchema).max(10).optional(),
 });
 
 export async function POST(req: Request) {
@@ -28,12 +35,28 @@ export async function POST(req: Request) {
   }
 
   try {
+    await consumirCota(userId, "ncm_chat");
+  } catch (e) {
+    if (e instanceof QuotaExcedidaError) {
+      return NextResponse.json(
+        { error: e.message, upgrade: true, limite: e.limite, usado: e.usado },
+        { status: 402 },
+      );
+    }
+    throw e;
+  }
+
+  try {
     const resposta = await descobrirNcm(parsed.data);
+    // RNF-5 — custo por operação.
+    if (resposta.meta.custo) {
+      await registrarEventoIA(userId, resposta.meta.custo);
+    }
     return NextResponse.json(resposta);
   } catch (err) {
-    console.error("Erro no chat de NCM:", err);
+    console.error("Erro na descoberta de NCM:", err);
     return NextResponse.json(
-      { error: "Falha ao consultar o classificador de NCM. Tente novamente." },
+      { error: "Falha ao consultar a base de NCM. Tente novamente." },
       { status: 502 },
     );
   }

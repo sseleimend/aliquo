@@ -1,34 +1,42 @@
 import { NextResponse } from "next/server";
 import { getUserId } from "@/lib/auth";
-import { buscarPorCodigo } from "@/lib/ncm/classifier";
-import { normalizeNcm } from "@/lib/ncm/dataset";
+import { apenasDigitos, formatarNcm } from "@/lib/ncm/codigo";
+import { buscarPorCodigo, sugerirPorPrefixo } from "@/lib/ncm/retrieval";
 
-// RF01 — consulta direta por código NCM.
+/**
+ * RF-A3 — caminho rápido do importador experiente.
+ * `?ncm=` consulta um código exato; `?q=` faz type-ahead por código ou texto.
+ */
 export async function GET(req: Request) {
   const userId = await getUserId();
   if (!userId) return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const raw = searchParams.get("ncm") ?? "";
-  const ncm = normalizeNcm(raw);
-  const digits = ncm.replace(/\D/g, "");
+  const termo = (searchParams.get("q") ?? "").trim();
 
-  if (digits.length !== 8) {
+  if (termo) {
+    const sugestoes = await sugerirPorPrefixo(termo, 10);
+    return NextResponse.json({ sugestoes });
+  }
+
+  const raw = searchParams.get("ncm") ?? "";
+  const digitos = apenasDigitos(raw);
+  if (digitos.length !== 8) {
     return NextResponse.json(
-      { error: "Informe um NCM com 8 dígitos", ncm },
+      { error: "Informe um NCM com 8 dígitos", ncm: formatarNcm(digitos) },
       { status: 400 },
     );
   }
 
-  const entry = buscarPorCodigo(ncm);
+  const entry = await buscarPorCodigo(digitos);
   return NextResponse.json({
-    ncm,
+    ncm: formatarNcm(digitos),
     encontrado: Boolean(entry),
     descricao: entry?.descricao ?? null,
-    categoria: entry?.categoria ?? null,
-    // Mesmo sem estar na base de amostra, o usuário pode prosseguir manualmente.
+    caminho: entry?.caminho ?? null,
+    // Sem estar na base oficial, o código não é calculável — e dizemos isso.
     aviso: entry
       ? null
-      : "NCM não encontrado na base de amostra do protótipo — você pode prosseguir, mas o cálculo usará alíquotas federais padrão.",
+      : "NCM não encontrada na base oficial carregada. Confirme o código: o cálculo não será feito sem alíquota oficial.",
   });
 }

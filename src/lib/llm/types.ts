@@ -1,5 +1,5 @@
 // Contrato comum de provider de LLM — permite trocar o fornecedor sem tocar
-// na lógica de negócio (chat de descoberta de NCM).
+// na lógica de negócio (descoberta de NCM).
 
 export interface LLMMessage {
   role: "system" | "user" | "assistant";
@@ -13,13 +13,30 @@ export interface LLMCompleteOptions {
   json?: boolean;
 }
 
+/**
+ * Resposta do provider.
+ *
+ * Carrega o uso de tokens porque o RNF-5 exige medir o custo por operação —
+ * e sem isso na assinatura o dado se perde no momento em que é gerado.
+ */
+export interface LLMResposta {
+  texto: string;
+  provider: string;
+  model: string;
+  latencyMs: number;
+  inputTokens?: number;
+  outputTokens?: number;
+}
+
 export interface LLMProvider {
-  /** Identificador do provider ("mock", "ollama", "anthropic"). */
+  /** Identificador do provider ("mock", "ollama", "anthropic", "gemini"). */
   readonly name: string;
-  /**
-   * false para o provider `mock` (sem chamada de rede) — o classifier usa
-   * as regras determinísticas embutidas nesse caso.
-   */
+  /** false para `mock`/`scripted` sem rede — o chamador degrada para busca pura. */
   readonly usaLLM: boolean;
-  complete(messages: LLMMessage[], opts?: LLMCompleteOptions): Promise<string>;
+  complete(messages: LLMMessage[], opts?: LLMCompleteOptions): Promise<LLMResposta>;
+}
+
+/** Resposta vazia padronizada, para providers sem rede. */
+export function respostaVazia(provider: string): LLMResposta {
+  return { texto: "", provider, model: "-", latencyMs: 0 };
 }

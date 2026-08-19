@@ -13,7 +13,14 @@
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "db:reset": "prisma migrate reset --force",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "base:nomenclatura": "tsx scripts/import-nomenclatura.ts",
+    "base:aliquotas": "tsx scripts/import-aliquotas.ts",
+    "ncm:index": "tsx scripts/ncm-index.ts",
+    "base:import": "npm run base:nomenclatura && npm run base:aliquotas && npm run ncm:index",
+    "ncm:eval": "tsx scripts/ncm-eval.ts",
+    "custo:ia": "tsx scripts/custo-ia.ts",
+    "verificar:migracao": "tsx scripts/verificar-migracao.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

@@ -8,7 +8,11 @@ export default async function CadastroPage() {
   if (session?.user) redirect("/simulador");
 
   return (
-    <AuthShell titulo="Criar conta" subtitulo="Comece a simular custos de importação em minutos.">
+    <AuthShell
+      titulo="Criar conta"
+      subtitulo="Comece a simular custos de importação em minutos."
+      largura="larga"
+    >
       <RegisterForm />
     </AuthShell>
   );

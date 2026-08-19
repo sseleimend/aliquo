@@ -1,151 +1,251 @@
 import PDFDocument from "pdfkit";
 import { formatBRL, formatData, formatMoeda, formatPct } from "@/lib/format";
+import { formatarNcm } from "@/lib/ncm/codigo";
 import type { ExportPayload } from "@/lib/export/types";
+import { montarPayloadPdf } from "@/lib/migracao/payload";
 
-// RF15 — exportação do resultado em PDF (pdfkit, imperativo, JS puro).
+/**
+ * PDF do resultado (RF-C3) com rastreabilidade fiscal completa (RNF-1/RNF-6).
+ *
+ * Cada linha de tributo imprime a alíquota, a base, o valor, a FONTE da
+ * alíquota e o fundamento legal. O rodapé carrega o ato da base, a data de
+ * vigência, a cotação usada com data/fonte e a versão do conjunto de regras —
+ * é o que permite reproduzir o número meses depois.
+ *
+ * Quando falta alíquota oficial, o documento sai carimbado como PROVISÓRIO.
+ * Um PDF com aparência de laudo e números inventados é o pior resultado
+ * possível para um produto que vende confiança.
+ */
 export async function gerarPdf({
   resultado,
-  descricaoProduto,
+  apelido,
   createdAt,
+  importacaoId,
+  entrada,
 }: ExportPayload): Promise<Buffer> {
   return new Promise<Buffer>((resolve, reject) => {
-    const doc = new PDFDocument({ size: "A4", margin: 40 });
+    // O payload de reimportação vai nos METADADOS, não no layout. Reparsear a
+    // página impressa seria frágil a qualquer mudança visual; um campo de
+    // info é estável e independente do desenho.
+    const doc = new PDFDocument({
+      size: "A4",
+      margin: 40,
+      info: {
+        Title: `Aliquo — ${apelido ?? "simulação de importação"}`,
+        Author: "Aliquo",
+        Subject: "Simulação de custo de importação",
+        ...(entrada
+          ? { AliquoDados: montarPayloadPdf({ resultado, entrada, apelido, importacaoId, createdAt }) }
+          : {}),
+        // `AliquoDados` não está no tipo do pdfkit (que só declara os campos
+        // padrão do PDF), mas campos extras no Info são válidos na spec.
+      } as PDFKit.PDFDocumentOptions["info"],
+    });
     const chunks: Buffer[] = [];
     doc.on("data", (c: Buffer) => chunks.push(c));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
-    const pageW = doc.page.width;
     const left = doc.page.margins.left;
-    const right = pageW - doc.page.margins.right;
+    const right = doc.page.width - doc.page.margins.right;
     const contentW = right - left;
 
-    const ACCENT = "#0c447c";
-    const INK = "#1f1e1c";
-    const MUTED = "#8a887f";
+    const ACCENT = "#0b6b7c";
+    const INK = "#18222f";
+    const MUTED = "#6b7a89";
+    const STAMP = "#b23a2e";
 
-    // Cabeçalho
+    // ---------- Cabeçalho ----------
     doc.fillColor(ACCENT).font("Helvetica-Bold").fontSize(16);
-    doc.text("Aliquo — Simulação Tributária e Landed Cost", { align: "left" });
+    doc.text("Aliquo — Simulação de custo de importação", { align: "left" });
     doc.moveDown(0.2);
     doc.fillColor(MUTED).font("Helvetica").fontSize(9);
-    doc.text(`Protótipo · Gerado em ${formatData(createdAt ?? new Date())}`);
-    doc.moveDown(0.8);
+    doc.text(`Gerado em ${formatData(createdAt ?? new Date())}`);
+    if (apelido) doc.text(apelido);
+    doc.moveDown(0.6);
+
+    // ---------- Carimbo de provisório ----------
+    if (resultado.provisorio) {
+      const y = doc.y;
+      doc.rect(left, y, contentW, 46).fill("#b23a2e14");
+      doc.fillColor(STAMP).font("Helvetica-Bold").fontSize(11);
+      doc.text("SIMULAÇÃO PROVISÓRIA", left + 10, y + 8, { width: contentW - 20 });
+      doc.fillColor(INK).font("Helvetica").fontSize(8.5);
+      doc.text(
+        "Falta alíquota oficial para ao menos um item. O custo total abaixo NÃO é confiável " +
+          "enquanto as pendências não forem resolvidas.",
+        left + 10,
+        y + 24,
+        { width: contentW - 20 },
+      );
+      doc.y = y + 54;
+    }
 
     const kv = (k: string, v: string) => {
       const y = doc.y;
-      doc.fillColor(MUTED).font("Helvetica").fontSize(9).text(k, left, y, { width: 150 });
-      doc.fillColor(INK).font("Helvetica").fontSize(9).text(v, left + 155, y, { width: contentW - 155 });
-      doc.moveDown(0.2);
+      doc.fillColor(MUTED).font("Helvetica").fontSize(8.5).text(k, left, y, { width: 130 });
+      doc
+        .fillColor(INK)
+        .font("Helvetica")
+        .fontSize(8.5)
+        .text(v, left + 135, y, { width: contentW - 135 });
+      doc.moveDown(0.25);
     };
 
     const secao = (titulo: string) => {
-      doc.moveDown(0.6);
-      doc.fillColor(INK).font("Helvetica-Bold").fontSize(11).text(titulo);
-      doc.moveDown(0.3);
+      doc.moveDown(0.5);
+      doc.fillColor(INK).font("Helvetica-Bold").fontSize(10.5).text(titulo);
+      doc.moveDown(0.25);
     };
 
-    secao("Dados gerais");
-    kv("NCM", resultado.ncm);
-    if (resultado.descricaoNcm) kv("Descrição NCM", resultado.descricaoNcm);
-    if (descricaoProduto) kv("Produto informado", descricaoProduto);
-    kv("UF de destino", resultado.uf);
-    kv("Câmbio", `1 ${resultado.moeda} = ${formatBRL(resultado.taxaCambio)}`);
-    const qtd = resultado.quantidade ?? 1;
-    if (qtd > 1) {
-      kv("Quantidade", String(qtd));
-      kv(
-        "Valor unitário (FOB)",
-        formatMoeda(resultado.valorUnitarioMoeda ?? resultado.fobMoeda, resultado.moeda),
-      );
-    }
+    // ---------- Dados gerais ----------
+    secao("Dados da importação");
+    kv("UF de destino", resultado.uf || "não informada");
+    kv("Regime tributário", resultado.regime.replace(/_/g, " "));
     kv(
-      qtd > 1 ? "Valor FOB total" : "Valor FOB",
-      `${formatMoeda(resultado.fobMoeda, resultado.moeda)} = ${formatBRL(resultado.fobBrl)}`,
+      "Câmbio aplicado",
+      `1 ${resultado.moeda} = ${formatBRL(resultado.taxaCambio)}` +
+        (resultado.fx?.fonte ? `  ·  ${resultado.fx.fonte}` : "") +
+        (resultado.fx?.stale ? "  ·  COTAÇÃO DESATUALIZADA" : ""),
     );
-    kv("Frete internacional", formatBRL(resultado.freteInternacional));
-    kv("Seguro internacional", formatBRL(resultado.seguroInternacional));
-    kv("Valor aduaneiro", formatBRL(resultado.valorAduaneiro));
+    if (importacaoId) kv("Identificador", importacaoId);
 
-    // Colunas da tabela de tributos
-    const cols = { rot: left, aliq: left + 250, base: left + 330, val: left + 440 };
-    const linhaTabela = (
-      a: string,
-      b: string,
-      c: string,
-      d: string,
-      opts: { bold?: boolean; header?: boolean } = {},
-    ) => {
-      const y = doc.y;
+    // ---------- Itens ----------
+    for (const item of resultado.itens) {
+      secao(
+        resultado.itens.length > 1
+          ? `Item ${item.ordem + 1} — NCM ${formatarNcm(item.ncm)}`
+          : `NCM ${formatarNcm(item.ncm)}`,
+      );
+
+      if (item.descricaoProduto) kv("Produto informado", item.descricaoProduto);
+      // O texto OFICIAL é o que dá validade à classificação (RNF-1).
+      if (item.caminhoOficial) kv("Classificação oficial", item.caminhoOficial);
+
+      kv("Quantidade", String(item.quantidade));
+      kv("Valor unitário", formatMoeda(item.valorUnitarioMoeda, resultado.moeda));
+      kv("FOB", `${formatMoeda(item.fobMoeda, resultado.moeda)}  =  ${formatBRL(item.fobBrl)}`);
+      if (item.freteRateado) kv("Frete (rateado)", formatBRL(item.freteRateado));
+      if (item.seguroRateado) kv("Seguro (rateado)", formatBRL(item.seguroRateado));
+      kv("Valor aduaneiro", formatBRL(item.valorAduaneiro));
+
+      // Tabela de tributos
+      doc.moveDown(0.3);
+      const cols = [left, left + 150, left + 215, left + 300, left + 385];
+      doc.fillColor(MUTED).font("Helvetica-Bold").fontSize(7.5);
+      const yh = doc.y;
+      doc.text("TRIBUTO", cols[0], yh, { width: 145 });
+      doc.text("ALÍQ.", cols[1], yh, { width: 60 });
+      doc.text("BASE", cols[2], yh, { width: 80 });
+      doc.text("VALOR", cols[3], yh, { width: 80 });
+      doc.text("FONTE DA ALÍQUOTA", cols[4], yh, { width: contentW - 385 });
+      doc.moveDown(0.4);
       doc
-        .font(opts.bold || opts.header ? "Helvetica-Bold" : "Helvetica")
-        .fontSize(opts.header ? 8 : 9)
-        .fillColor(opts.header ? MUTED : INK);
-      doc.text(a, cols.rot, y, { width: 240 });
-      doc.text(b, cols.aliq, y, { width: 70, align: "right" });
-      doc.text(c, cols.base, y, { width: 100, align: "right" });
-      doc.text(d, cols.val, y, { width: contentW - (cols.val - left), align: "right" });
-      doc.moveDown(0.35);
-    };
+        .strokeColor("#d9e0e8")
+        .lineWidth(0.5)
+        .moveTo(left, doc.y)
+        .lineTo(right, doc.y)
+        .stroke();
+      doc.moveDown(0.3);
 
-    secao("Tributos");
-    linhaTabela("Tributo", "Alíquota", "Base", "Valor", { header: true });
-    for (const t of resultado.tributos) {
-      linhaTabela(t.rotulo, formatPct(t.aliquota), formatBRL(t.base), formatBRL(t.valor));
-    }
-    linhaTabela("Total de tributos", "", "", formatBRL(resultado.totalTributos), { bold: true });
-
-    secao("Custos variáveis");
-    if (resultado.custos.length === 0) {
-      doc.font("Helvetica").fontSize(9).fillColor(MUTED).text("Nenhum custo variável informado.");
-    } else {
-      for (const c of resultado.custos) {
+      for (const t of item.tributos) {
         const y = doc.y;
-        doc.font("Helvetica").fontSize(9).fillColor(INK).text(c.rotulo, cols.rot, y, { width: 300 });
-        doc.text(formatBRL(c.valor), cols.val, y, {
-          width: contentW - (cols.val - left),
-          align: "right",
-        });
+        doc.fillColor(INK).font("Helvetica").fontSize(8);
+        doc.text(t.rotulo, cols[0], y, { width: 145 });
+        doc.text(formatPct(t.aliquota), cols[1], y, { width: 60 });
+        doc.text(formatBRL(t.base), cols[2], y, { width: 80 });
+        doc.font("Helvetica-Bold").text(formatBRL(t.valor), cols[3], y, { width: 80 });
+        doc.font("Helvetica").fillColor(MUTED).fontSize(7);
+        doc.text(t.fonteAliquota, cols[4], y, { width: contentW - 385 });
+        doc.moveDown(0.15);
+        // Fundamento legal em linha própria, miúdo.
+        doc.fillColor(MUTED).fontSize(6.5).text(t.fonteLegal, cols[0], doc.y, { width: contentW });
         doc.moveDown(0.35);
       }
-    }
-    {
-      const y = doc.y;
-      doc.font("Helvetica-Bold").fontSize(9).fillColor(INK).text("Total de custos", cols.rot, y, { width: 300 });
-      doc.text(formatBRL(resultado.totalCustos), cols.val, y, {
-        width: contentW - (cols.val - left),
+
+      doc.fillColor(INK).font("Helvetica-Bold").fontSize(8.5);
+      doc.text(`Total de tributos: ${formatBRL(item.totalTributos)}`, left, doc.y, {
+        width: contentW,
         align: "right",
       });
-      doc.moveDown(0.6);
+      doc.moveDown(0.3);
+
+      if (item.custosRateados.length) {
+        doc.fillColor(MUTED).font("Helvetica").fontSize(8);
+        for (const c of item.custosRateados) {
+          doc.text(
+            `${c.rotulo}${c.criterioRateio ? ` (rateio por ${c.criterioRateio})` : ""}: ${formatBRL(c.valor)}`,
+            { width: contentW },
+          );
+        }
+        doc.moveDown(0.2);
+      }
+
+      if (item.bloqueios.length) {
+        doc.fillColor(STAMP).font("Helvetica-Bold").fontSize(8);
+        for (const b of item.bloqueios) doc.text(`PENDÊNCIA: ${b.mensagem}`, { width: contentW });
+        doc.moveDown(0.2);
+      }
     }
 
-    // Landed cost em destaque
-    const boxY = doc.y;
-    doc.roundedRect(left, boxY, contentW, 34, 5).fill("#e6f1fb");
-    doc
-      .fillColor(ACCENT)
-      .font("Helvetica-Bold")
-      .fontSize(11)
-      .text("LANDED COST (custo total de nacionalização)", left + 12, boxY + 11, { width: 320 });
-    doc
-      .fontSize(14)
-      .text(formatBRL(resultado.landedCost), left, boxY + 9, { width: contentW - 12, align: "right" });
-    doc.y = boxY + 34;
-    doc.moveDown(1);
+    // ---------- Consolidado ----------
+    secao("Custo total de nacionalização");
+    kv("Valor aduaneiro total", formatBRL(resultado.valorAduaneiroTotal));
+    kv("Total de tributos", formatBRL(resultado.totalTributos));
+    kv("Total de custos", formatBRL(resultado.totalCustos));
 
-    // Disclaimer + avisos
-    doc
-      .font("Helvetica")
-      .fontSize(8)
-      .fillColor("#791f1f")
-      .text(
-        "Protótipo Aliquo — alíquotas e classificação de NCM são valores de amostra e NÃO " +
-          "substituem a fonte oficial (Receita Federal). Sem valor fiscal ou jurídico.",
+    doc.moveDown(0.3);
+    doc.fillColor(resultado.provisorio ? STAMP : ACCENT).font("Helvetica-Bold").fontSize(14);
+    doc.text(
+      `LANDED COST: ${formatBRL(resultado.landedCost)}${resultado.provisorio ? "  (PROVISÓRIO)" : ""}`,
+      { width: contentW },
+    );
+    doc.moveDown(0.2);
+
+    if (resultado.creditosRecuperaveis.length) {
+      doc.fillColor(INK).font("Helvetica").fontSize(8.5);
+      doc.text(
+        `Custo efetivo após créditos recuperáveis no regime ${resultado.regime.replace(/_/g, " ")}: ` +
+          formatBRL(resultado.landedCostEfetivo),
         { width: contentW },
       );
-    for (const a of resultado.avisos) {
-      doc.fillColor("#633806").text(`• ${a}`, { width: contentW });
+      doc.fillColor(MUTED).fontSize(7.5);
+      doc.text(
+        "Créditos: " +
+          resultado.creditosRecuperaveis.map((c) => `${c.rotulo} ${formatBRL(c.valor)}`).join(" · "),
+        { width: contentW },
+      );
     }
+
+    // ---------- Avisos ----------
+    if (resultado.avisos.length) {
+      secao("Avisos");
+      doc.fillColor(INK).font("Helvetica").fontSize(8);
+      for (const a of resultado.avisos) doc.text(`• ${a}`, { width: contentW });
+    }
+
+    // ---------- Rastreabilidade ----------
+    secao("Rastreabilidade");
+    doc.fillColor(MUTED).font("Helvetica").fontSize(7.5);
+    const linhas = [
+      resultado.baseAto ? `Base NCM: ${resultado.baseAto} (${resultado.baseVigenteEm ?? "-"})` : null,
+      `Regras de cálculo: ${resultado.rulesetRotulo} [${resultado.rulesetId}]`,
+      resultado.fx
+        ? `Câmbio: ${resultado.fx.fonte} · referência ${resultado.fx.dataRef ?? "-"}` +
+          (resultado.fx.asOf ? ` · cotado em ${formatData(resultado.fx.asOf)}` : "")
+        : null,
+      `Data de referência do cálculo: ${formatData(resultado.dataReferencia)}`,
+    ].filter(Boolean) as string[];
+    for (const l of linhas) doc.text(l, { width: contentW });
+
+    doc.moveDown(0.6);
+    doc.fillColor(MUTED).fontSize(7);
+    doc.text(
+      "Este documento é uma SIMULAÇÃO gerada automaticamente a partir de bases públicas. " +
+        "Não constitui classificação fiscal oficial nem parecer tributário. A decisão final " +
+        "e a conferência na fonte oficial são de responsabilidade do importador.",
+      { width: contentW },
+    );
 
     doc.end();
   });
