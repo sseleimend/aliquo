@@ -1,0 +1,186 @@
+/**
+ * Ponte de vocabulário entre como o usuário fala e como a nomenclatura escreve.
+ *
+ * Este é o remédio para o problema central da recuperação lexical: o usuário
+ * digita "notebook", e o texto oficial da posição 84.71 diz "Máquinas
+ * automáticas para processamento de dados". Zero interseção de palavras — o
+ * BM25 sozinho nunca acha.
+ *
+ * Os códigos são majoritariamente de POSIÇÃO (4 dígitos), porque é nesse nível
+ * que a recuperação de primeiro estágio acontece; a escolha do item de 8
+ * dígitos vem depois, por desambiguação de atributo.
+ *
+ * `origem: "curado"` = escrito à mão aqui. Termos minerados do uso real
+ * (NcmFeedback) entram depois com origem diferente.
+ */
+
+export interface SinonimoSeed {
+  termo: string;
+  codigo: string;
+}
+
+export const SINONIMOS: SinonimoSeed[] = [
+  // --- Informática e eletrônicos de consumo ---
+  { termo: "notebook", codigo: "8471" },
+  { termo: "laptop", codigo: "8471" },
+  { termo: "computador portatil", codigo: "8471" },
+  { termo: "computador", codigo: "8471" },
+  { termo: "desktop", codigo: "8471" },
+  { termo: "tablet", codigo: "8471" },
+  { termo: "teclado", codigo: "8471" },
+  { termo: "mouse", codigo: "8471" },
+  { termo: "impressora", codigo: "8443" },
+  { termo: "scanner", codigo: "8471" },
+  { termo: "monitor", codigo: "8528" },
+  { termo: "televisao", codigo: "8528" },
+  { termo: "tv", codigo: "8528" },
+  { termo: "smart tv", codigo: "8528" },
+  { termo: "projetor", codigo: "8528" },
+  { termo: "celular", codigo: "8517" },
+  { termo: "smartphone", codigo: "8517" },
+  { termo: "telefone", codigo: "8517" },
+  { termo: "roteador", codigo: "8517" },
+  { termo: "modem", codigo: "8517" },
+  { termo: "smartwatch", codigo: "8517" },
+  { termo: "relogio inteligente", codigo: "8517" },
+  { termo: "pendrive", codigo: "8523" },
+  { termo: "ssd", codigo: "8523" },
+  { termo: "cartao de memoria", codigo: "8523" },
+  { termo: "hd externo", codigo: "8471" },
+  { termo: "fone de ouvido", codigo: "8518" },
+  { termo: "headphone", codigo: "8518" },
+  { termo: "headset", codigo: "8518" },
+  { termo: "caixa de som", codigo: "8518" },
+  { termo: "alto falante", codigo: "8518" },
+  { termo: "microfone", codigo: "8518" },
+  { termo: "camera", codigo: "8525" },
+  { termo: "camera de seguranca", codigo: "8525" },
+  { termo: "webcam", codigo: "8525" },
+  { termo: "drone", codigo: "8806" },
+  { termo: "console de videogame", codigo: "9504" },
+  { termo: "videogame", codigo: "9504" },
+
+  // --- Energia e componentes elétricos ---
+  { termo: "carregador", codigo: "8504" },
+  { termo: "fonte de alimentacao", codigo: "8504" },
+  { termo: "transformador", codigo: "8504" },
+  { termo: "nobreak", codigo: "8504" },
+  { termo: "power bank", codigo: "8507" },
+  { termo: "carregador portatil", codigo: "8507" },
+  { termo: "bateria", codigo: "8507" },
+  { termo: "pilha", codigo: "8506" },
+  { termo: "painel solar", codigo: "8541" },
+  { termo: "placa solar", codigo: "8541" },
+  { termo: "led", codigo: "8539" },
+  { termo: "lampada", codigo: "8539" },
+  { termo: "cabo usb", codigo: "8544" },
+  { termo: "cabo", codigo: "8544" },
+  { termo: "fio eletrico", codigo: "8544" },
+  { termo: "tomada", codigo: "8536" },
+  { termo: "conector", codigo: "8536" },
+  { termo: "disjuntor", codigo: "8536" },
+  { termo: "motor eletrico", codigo: "8501" },
+
+  // --- Eletrodomésticos ---
+  { termo: "aspirador", codigo: "8508" },
+  { termo: "robo aspirador", codigo: "8508" },
+  { termo: "aspirador de po", codigo: "8508" },
+  { termo: "geladeira", codigo: "8418" },
+  { termo: "refrigerador", codigo: "8418" },
+  { termo: "freezer", codigo: "8418" },
+  { termo: "ar condicionado", codigo: "8415" },
+  { termo: "ventilador", codigo: "8414" },
+  { termo: "exaustor", codigo: "8414" },
+  { termo: "compressor", codigo: "8414" },
+  { termo: "maquina de lavar", codigo: "8450" },
+  { termo: "lava louca", codigo: "8422" },
+  { termo: "microondas", codigo: "8516" },
+  { termo: "forno eletrico", codigo: "8516" },
+  { termo: "airfryer", codigo: "8516" },
+  { termo: "fritadeira eletrica", codigo: "8516" },
+  { termo: "fritadeira sem oleo", codigo: "8516" },
+  { termo: "cafeteira", codigo: "8516" },
+  { termo: "chaleira eletrica", codigo: "8516" },
+  { termo: "torradeira", codigo: "8516" },
+  { termo: "secador de cabelo", codigo: "8516" },
+  { termo: "chapinha", codigo: "8516" },
+  { termo: "ferro de passar", codigo: "8516" },
+  { termo: "aquecedor", codigo: "8516" },
+  { termo: "liquidificador", codigo: "8509" },
+  { termo: "batedeira", codigo: "8509" },
+  { termo: "processador de alimentos", codigo: "8509" },
+  { termo: "espremedor", codigo: "8509" },
+  { termo: "purificador de agua", codigo: "8421" },
+  { termo: "filtro de agua", codigo: "8421" },
+
+  // --- Vestuário, calçados e acessórios ---
+  { termo: "camiseta", codigo: "6109" },
+  { termo: "camisa", codigo: "6205" },
+  { termo: "calca", codigo: "6203" },
+  { termo: "jaqueta", codigo: "6201" },
+  { termo: "moletom", codigo: "6110" },
+  { termo: "blusa", codigo: "6106" },
+  { termo: "vestido", codigo: "6204" },
+  { termo: "meia", codigo: "6115" },
+  { termo: "tenis", codigo: "6404" },
+  { termo: "sapato", codigo: "6403" },
+  { termo: "calcado", codigo: "6403" },
+  { termo: "sandalia", codigo: "6402" },
+  { termo: "chinelo", codigo: "6402" },
+  { termo: "bolsa", codigo: "4202" },
+  { termo: "mochila", codigo: "4202" },
+  { termo: "mala", codigo: "4202" },
+  { termo: "carteira", codigo: "4202" },
+  { termo: "oculos de sol", codigo: "9004" },
+  { termo: "oculos", codigo: "9004" },
+  { termo: "relogio de pulso", codigo: "9102" },
+  { termo: "bijuteria", codigo: "7117" },
+  { termo: "joia", codigo: "7113" },
+
+  // --- Casa, brinquedos, esporte ---
+  { termo: "movel", codigo: "9403" },
+  { termo: "cadeira", codigo: "9401" },
+  { termo: "sofa", codigo: "9401" },
+  { termo: "colchao", codigo: "9404" },
+  { termo: "luminaria", codigo: "9405" },
+  { termo: "panela", codigo: "7323" },
+  { termo: "talher", codigo: "8215" },
+  { termo: "faca", codigo: "8211" },
+  { termo: "brinquedo", codigo: "9503" },
+  { termo: "boneca", codigo: "9503" },
+  { termo: "quebra cabeca", codigo: "9503" },
+  { termo: "bicicleta", codigo: "8712" },
+  { termo: "patinete eletrico", codigo: "8711" },
+  { termo: "moto", codigo: "8711" },
+  { termo: "equipamento de ginastica", codigo: "9506" },
+  { termo: "bola", codigo: "9506" },
+
+  // --- Higiene, cosméticos, saúde ---
+  { termo: "perfume", codigo: "3303" },
+  { termo: "maquiagem", codigo: "3304" },
+  { termo: "cosmetico", codigo: "3304" },
+  { termo: "protetor solar", codigo: "3304" },
+  { termo: "creme", codigo: "3304" },
+  { termo: "shampoo", codigo: "3305" },
+  { termo: "sabonete", codigo: "3401" },
+  { termo: "pasta de dente", codigo: "3306" },
+  { termo: "suplemento", codigo: "2106" },
+  { termo: "vitamina", codigo: "2106" },
+  { termo: "medicamento", codigo: "3004" },
+  { termo: "seringa", codigo: "9018" },
+  { termo: "equipamento medico", codigo: "9018" },
+  { termo: "termometro", codigo: "9025" },
+
+  // --- Industrial e autopeças ---
+  { termo: "rolamento", codigo: "8482" },
+  { termo: "valvula", codigo: "8481" },
+  { termo: "parafuso", codigo: "7318" },
+  { termo: "porca", codigo: "7318" },
+  { termo: "bomba", codigo: "8413" },
+  { termo: "ferramenta eletrica", codigo: "8467" },
+  { termo: "furadeira", codigo: "8467" },
+  { termo: "peca automotiva", codigo: "8708" },
+  { termo: "autopeca", codigo: "8708" },
+  { termo: "pneu", codigo: "4011" },
+  { termo: "filtro de oleo", codigo: "8421" },
+];

@@ -1,509 +1,269 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
-import { ChatNcm } from "@/components/simulador/ChatNcm";
-import { ResultadoBreakdown } from "@/components/simulador/ResultadoBreakdown";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { DisclaimerBanner } from "@/components/DisclaimerBanner";
-import { MoneyInput } from "@/components/MoneyInput";
-import { UF_LIST } from "@/lib/tax/rates";
-import { normalizeNcm } from "@/lib/ncm/dataset";
-import { formatBRL, formatMoeda } from "@/lib/format";
-import type { TaxResult } from "@/lib/tax/types";
+import { limparRascunhoSalvo, SimuladorProvider, useSimulador } from "./SimuladorProvider";
+import { carregarDeDuplicata } from "./duplicar";
+import {
+  PASSOS,
+  paraPayload,
+  passoAcessivel,
+  podeAvancar,
+  todosConfirmados,
+  type ModoUso,
+} from "./rascunho";
+import { Passo1Produto } from "./passos/Passo1Produto";
+import { Passo2Ncm } from "./passos/Passo2Ncm";
+import { Passo3Itens } from "./passos/Passo3Itens";
+import { Passo4FreteSeguro } from "./passos/Passo4FreteSeguro";
+import { Passo5Custos } from "./passos/Passo5Custos";
+import { Passo6Revisao } from "./passos/Passo6Revisao";
 
-const STEPS = ["NCM", "Valores & câmbio", "Custos variáveis", "Resultado"];
-
-interface Despachante {
-  id: string;
-  nome: string;
-  honorarios: number;
-}
-interface Custo {
-  id: string;
-  tipo: string;
-  descricao: string;
-  valor: number;
-}
-
-const emptyForm = {
-  fobMoeda: "",
-  quantidade: "1",
-  moeda: "USD",
-  uf: "SP",
-  freteInternacional: "",
-  seguroInternacional: "",
-  thc: "",
-  armazenagem: "",
-  despachante: "",
-  siscomex: "",
-  afrmm: "",
-  outrosCustos: "",
-};
-
-export function SimuladorClient() {
-  const [step, setStep] = useState(0);
-
-  // Etapa 0 — NCM
-  const [modo, setModo] = useState<"descrever" | "digitar">("descrever");
-  const [ncm, setNcm] = useState("");
-  const [ncmDescricao, setNcmDescricao] = useState<string | undefined>();
-  const [ncmInfo, setNcmInfo] = useState<{ descricao: string | null; aviso: string | null } | null>(
-    null,
+export function SimuladorClient({
+  baseAto,
+  duplicarDe,
+  comecarLimpo,
+}: {
+  baseAto?: string;
+  duplicarDe?: string;
+  comecarLimpo?: boolean;
+}) {
+  return (
+    <SimuladorProvider
+      ignorarRascunhoSalvo={Boolean(duplicarDe) || Boolean(comecarLimpo)}
+      limparRascunho={Boolean(comecarLimpo)}
+    >
+      <Conteudo baseAto={baseAto} duplicarDe={duplicarDe} />
+    </SimuladorProvider>
   );
-  const [ncmInput, setNcmInput] = useState("");
+}
 
-  // Etapas 1-2 — formulário
-  const [form, setForm] = useState({ ...emptyForm });
-  const [cambio, setCambio] = useState<{ rate: number; currency: string; simulado: boolean } | null>(
-    null,
-  );
-  const [moedas, setMoedas] = useState<string[]>(["USD", "EUR", "CNY", "GBP", "JPY"]);
+/**
+ * Passos exibidos no stepper.
+ *
+ * No modo rápido, valores/frete/custos aparecem numa página só — então eles
+ * precisam ser UM item no stepper. Mantê-los como três botões que abrem
+ * exatamente o mesmo formulário é o que fazia o usuário achar que a navegação
+ * estava quebrada. O passo interno continua 0..5; só a apresentação colapsa.
+ */
+function passosExibidos(rapido: boolean): Array<{ rotulo: string; de: number; ate: number }> {
+  if (!rapido) return PASSOS.map((rotulo, i) => ({ rotulo, de: i, ate: i }));
+  return [
+    { rotulo: PASSOS[0], de: 0, ate: 0 },
+    { rotulo: PASSOS[1], de: 1, ate: 1 },
+    { rotulo: "Dados da importação", de: 2, ate: 4 },
+    { rotulo: PASSOS[5], de: 5, ate: 5 },
+  ];
+}
 
-  // Cadastros salvos (RF11)
-  const [despachantes, setDespachantes] = useState<Despachante[]>([]);
-  const [custos, setCustos] = useState<Custo[]>([]);
+function Conteudo({ baseAto, duplicarDe }: { baseAto?: string; duplicarDe?: string }) {
+  const { estado, despachar } = useSimulador();
+  const ultimo = PASSOS.length - 1;
+  const [avisoDuplicata, setAvisoDuplicata] = useState<string | null>(null);
+  const jaDuplicou = useRef<string | null>(null);
 
-  // Resultado
-  const [resultado, setResultado] = useState<TaxResult | null>(null);
-  const [simId, setSimId] = useState<string | null>(null);
-  const [erro, setErro] = useState<string | null>(null);
-  const [carregando, setCarregando] = useState(false);
-
-  const set = (k: keyof typeof emptyForm, v: string) => setForm((f) => ({ ...f, [k]: v }));
-
-  const fetchCambio = useCallback(async (moeda: string) => {
-    try {
-      const r = await fetch(`/api/fx?currency=${encodeURIComponent(moeda)}`);
-      const data = await r.json();
-      if (r.ok) {
-        setCambio({ rate: data.rate, currency: data.currency, simulado: data.simulado });
-        if (Array.isArray(data.moedasSuportadas)) setMoedas(data.moedasSuportadas);
-      }
-    } catch {
-      /* silencioso */
-    }
-  }, []);
-
+  // RF-D4 — carrega uma importação anterior como rascunho, pelo mesmo caminho
+  // que o seletor do passo 1 usa.
   useEffect(() => {
-    if (step === 1) fetchCambio(form.moeda);
-  }, [step, form.moeda, fetchCambio]);
+    if (!duplicarDe || jaDuplicou.current === duplicarDe) return;
+    jaDuplicou.current = duplicarDe;
 
-  useEffect(() => {
-    if (step !== 2) return;
-    fetch("/api/despachantes")
-      .then((r) => r.json())
-      .then((d) => setDespachantes(d.despachantes ?? []))
-      .catch(() => {});
-    fetch("/api/custos")
-      .then((r) => r.json())
-      .then((d) => setCustos(d.custos ?? []))
-      .catch(() => {});
-  }, [step]);
+    (async () => {
+      despachar({ tipo: "carregando", carregando: true });
+      const r = await carregarDeDuplicata(duplicarDe, despachar);
+      if (!r.ok) despachar({ tipo: "erro", erro: r.erro });
+      else setAvisoDuplicata(r.aviso ?? null);
+      despachar({ tipo: "carregando", carregando: false });
+    })();
+  }, [duplicarDe, despachar]);
 
-  function confirmarNcm(codigo: string, descricao?: string) {
-    setNcm(normalizeNcm(codigo));
-    setNcmDescricao(descricao);
-    setStep(1);
-  }
-
-  async function verificarNcm() {
-    const code = normalizeNcm(ncmInput);
-    if (code.replace(/\D/g, "").length !== 8) {
-      setNcmInfo({ descricao: null, aviso: "Informe um NCM com 8 dígitos." });
-      return;
-    }
-    const r = await fetch(`/api/ncm/search?ncm=${encodeURIComponent(code)}`);
-    const data = await r.json();
-    setNcmInfo({ descricao: data.descricao ?? null, aviso: data.aviso ?? null });
-  }
-
-  const quantidade = Number(form.quantidade) || 0;
-  const fobTotalMoeda = (Number(form.fobMoeda) || 0) * (quantidade || 1);
-  const fobBrl = fobTotalMoeda * (cambio?.rate ?? 0);
-  const vaPreview = fobBrl + (Number(form.freteInternacional) || 0) + (Number(form.seguroInternacional) || 0);
-
-  async function calcular() {
-    setErro(null);
-    setCarregando(true);
+  const calcular = useCallback(async () => {
+    despachar({ tipo: "carregando", carregando: true });
     try {
-      const r = await fetch("/api/simulacao", {
+      const res = await fetch("/api/importacoes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ncm,
-          descricaoProduto: ncmDescricao,
-          valorUnitarioMoeda: Number(form.fobMoeda) || 0,
-          quantidade: Number(form.quantidade) || 1,
-          moeda: form.moeda,
-          uf: form.uf,
-          freteInternacional: Number(form.freteInternacional) || 0,
-          seguroInternacional: Number(form.seguroInternacional) || 0,
-          thc: Number(form.thc) || 0,
-          armazenagem: Number(form.armazenagem) || 0,
-          despachante: Number(form.despachante) || 0,
-          siscomex: Number(form.siscomex) || 0,
-          afrmm: Number(form.afrmm) || 0,
-          outrosCustos: Number(form.outrosCustos) || 0,
-        }),
+        body: JSON.stringify(paraPayload(estado)),
       });
-      const data = await r.json();
-      if (!r.ok) {
-        setErro(data.error ?? "Falha no cálculo.");
+      const data = await res.json();
+      if (!res.ok) {
+        despachar({ tipo: "erro", erro: data.error ?? "Falha ao calcular." });
         return;
       }
-      setResultado(data.resultado);
-      setSimId(data.id);
-      setStep(3);
+      despachar({ tipo: "resultado", resultado: data.resultado, importacaoId: data.id });
     } catch {
-      setErro("Erro de rede. Tente novamente.");
-    } finally {
-      setCarregando(false);
+      despachar({ tipo: "erro", erro: "Não foi possível calcular. Verifique a conexão." });
     }
-  }
+  }, [estado, despachar]);
 
-  function novaSimulacao() {
-    setStep(0);
-    setModo("descrever");
-    setNcm("");
-    setNcmDescricao(undefined);
-    setNcmInfo(null);
-    setNcmInput("");
-    setForm({ ...emptyForm });
-    setResultado(null);
-    setSimId(null);
-    setErro(null);
-  }
-
-  const podeIrValores = Number(form.fobMoeda) > 0 && quantidade > 0 && form.uf && cambio;
+  const rapido = estado.modo === "rapido";
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-ink">Nova simulação</h1>
-        <p className="text-sm text-ink2">
-          Do NCM ao custo total de nacionalização, com verificação humana obrigatória.
-        </p>
+      {/* ---- Cabeçalho e alternância de ritmo ---- */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-ink">Nova simulação</h1>
+          <p className="text-sm text-muted">
+            Da classificação ao custo total, com a base oficial sempre à vista.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            // Cores do botão do histórico; `self-stretch` faz a altura
+            // acompanhar o seletor de ritmo ao lado sem depender de um padding
+            // chutado que quebraria se aquele componente mudar.
+            className="btn-primary !px-3 !py-1 text-xs self-stretch"
+            onClick={() => {
+              limparRascunhoSalvo();
+              despachar({ tipo: "reset" });
+            }}
+          >
+            Nova simulação
+          </button>
+
+          <div className="flex items-center gap-1 rounded-lg border border-line bg-white p-1">
+            {(["guiado", "rapido"] as ModoUso[]).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => despachar({ tipo: "modo", modo: m })}
+              className={`rounded-md px-3 py-1 text-xs font-medium transition ${
+                estado.modo === m ? "bg-accent text-white" : "text-ink2 hover:bg-page"
+              }`}
+            >
+                {m === "guiado" ? "Guiado" : "Modo rápido"}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Stepper */}
-      <ol className="flex flex-wrap gap-2">
-        {STEPS.map((s, i) => (
-          <li
-            key={s}
-            className={`flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${
-              i === step
-                ? "bg-accent text-white"
-                : i < step
-                  ? "bg-teal-bg text-teal-text"
-                  : "bg-page text-muted"
-            }`}
-          >
-            <span className="grid h-5 w-5 place-items-center rounded-full bg-white/25 text-[11px]">
-              {i < step ? "✓" : i + 1}
-            </span>
-            {s}
-          </li>
-        ))}
+      {/* ---- Stepper ---- */}
+      <ol className="flex flex-wrap gap-1.5">
+        {passosExibidos(rapido).map((p, i) => {
+          const ativo = estado.passo >= p.de && estado.passo <= p.ate;
+          const feito = estado.passo > p.ate;
+          const acessivel = passoAcessivel(estado, p.de);
+          return (
+            <li key={p.rotulo}>
+              <button
+                type="button"
+                disabled={!acessivel}
+                onClick={() => despachar({ tipo: "passo", passo: p.de })}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                  ativo
+                    ? "bg-accent text-white"
+                    : feito
+                      ? "bg-teal-bg text-teal-text"
+                      : acessivel
+                        ? "bg-white text-ink2 hover:bg-page"
+                        : "bg-page text-muted opacity-60"
+                }`}
+              >
+                <span className="mr-1 font-mono">{feito ? "✓" : i + 1}</span>
+                {p.rotulo}
+              </button>
+            </li>
+          );
+        })}
       </ol>
 
-      {erro ? (
-        <p className="rounded-md bg-danger-bg px-3 py-2 text-sm text-danger-text">{erro}</p>
-      ) : null}
-
-      {/* ── Etapa 0: NCM ─────────────────────────────────────────── */}
-      {step === 0 ? (
-        <div className="card p-5">
-          <div className="mb-4 inline-flex rounded-lg border border-line p-1">
-            <button
-              className={`rounded-md px-3 py-1.5 text-sm ${
-                modo === "descrever" ? "bg-accent text-white" : "text-ink2"
-              }`}
-              onClick={() => setModo("descrever")}
-            >
-              Descrever produto (IA)
-            </button>
-            <button
-              className={`rounded-md px-3 py-1.5 text-sm ${
-                modo === "digitar" ? "bg-accent text-white" : "text-ink2"
-              }`}
-              onClick={() => setModo("digitar")}
-            >
-              Já sei o NCM
-            </button>
-          </div>
-
-          {modo === "descrever" ? (
-            <ChatNcm onConfirmar={confirmarNcm} />
-          ) : (
-            <div className="space-y-3">
-              <label className="label" htmlFor="ncm-direto">
-                Código NCM (RF01)
-              </label>
-              <div className="flex gap-2">
-                <input
-                  id="ncm-direto"
-                  className="input font-mono"
-                  placeholder="0000.00.00"
-                  value={ncmInput}
-                  onChange={(e) => setNcmInput(normalizeNcm(e.target.value))}
-                />
-                <button className="btn-secondary" onClick={verificarNcm}>
-                  Verificar
-                </button>
-              </div>
-              {ncmInfo ? (
-                <div className="rounded-lg border border-line bg-page p-3 text-sm">
-                  {ncmInfo.descricao ? (
-                    <p className="text-ink">{ncmInfo.descricao}</p>
-                  ) : (
-                    <p className="text-muted">Sem descrição na base de amostra.</p>
-                  )}
-                  {ncmInfo.aviso ? <p className="mt-1 text-xs text-warn-text">{ncmInfo.aviso}</p> : null}
-                </div>
-              ) : null}
-              <button
-                className="btn-primary"
-                onClick={() => confirmarNcm(ncmInput)}
-                disabled={normalizeNcm(ncmInput).replace(/\D/g, "").length !== 8}
-              >
-                Confirmar NCM e continuar
-              </button>
-            </div>
-          )}
+      {avisoDuplicata && estado.duplicadaDeId && (
+        <div className="rounded-lg border border-accent-border bg-accent-bg px-3 py-2 text-sm text-accent-text">
+          <strong>Duplicando uma importação anterior.</strong> {avisoDuplicata}
         </div>
-      ) : null}
+      )}
 
-      {/* ── Etapa 1: Valores & câmbio ────────────────────────────── */}
-      {step === 1 ? (
-        <div className="card space-y-4 p-5">
-          <NcmChip ncm={ncm} descricao={ncmDescricao} />
+      {estado.passo < ultimo && <DisclaimerBanner />}
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="label">Valor unitário (FOB)</label>
-              <MoneyInput
-                prefix={form.moeda}
-                value={Number(form.fobMoeda) || 0}
-                onValueChange={(n) => set("fobMoeda", n ? String(n) : "")}
-              />
-            </div>
-            <div>
-              <label className="label">Quantidade</label>
-              <input
-                type="number"
-                min="1"
-                step="1"
-                inputMode="decimal"
-                className="input"
-                value={form.quantidade}
-                onChange={(e) => set("quantidade", e.target.value)}
-              />
-            </div>
+      {estado.erro && (
+        <div className="rounded-lg border border-danger-border bg-danger-bg px-3 py-2 text-sm text-danger-text">
+          {estado.erro}
+        </div>
+      )}
+
+      {/* ---- Corpo ----
+          No modo rápido, os passos 3 a 5 (valores, frete, custos) aparecem
+          numa página só. São exatamente os mesmos componentes — muda o
+          invólucro, não o fluxo. */}
+      <div className="card p-5">
+        {estado.passo === 0 && <Passo1Produto baseAto={baseAto} />}
+        {estado.passo === 1 && <Passo2Ncm baseAto={baseAto} />}
+
+        {rapido && estado.passo >= 2 && estado.passo <= 4 ? (
+          <div className="space-y-8">
+            <Secao titulo="Valores e quantidades">
+              <Passo3Itens />
+            </Secao>
+            <Secao titulo="Frete e seguro">
+              <Passo4FreteSeguro />
+            </Secao>
+            <Secao titulo="Custos variáveis">
+              <Passo5Custos />
+            </Secao>
           </div>
+        ) : (
+          <>
+            {estado.passo === 2 && <Passo3Itens />}
+            {estado.passo === 3 && <Passo4FreteSeguro />}
+            {estado.passo === 4 && <Passo5Custos />}
+          </>
+        )}
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="label">Moeda</label>
-              <select className="input" value={form.moeda} onChange={(e) => set("moeda", e.target.value)}>
-                {moedas.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="label">UF de destino (RF07)</label>
-              <select className="input" value={form.uf} onChange={(e) => set("uf", e.target.value)}>
-                {UF_LIST.map((uf) => (
-                  <option key={uf} value={uf}>
-                    {uf}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+        {estado.passo === ultimo && <Passo6Revisao />}
+      </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="label">Frete internacional (R$) — compõe o VA</label>
-              <MoneyInput
-                value={Number(form.freteInternacional) || 0}
-                onValueChange={(n) => set("freteInternacional", n ? String(n) : "")}
-              />
-            </div>
-            <div>
-              <label className="label">Seguro internacional (R$) — compõe o VA</label>
-              <MoneyInput
-                value={Number(form.seguroInternacional) || 0}
-                onValueChange={(n) => set("seguroInternacional", n ? String(n) : "")}
-              />
-            </div>
-          </div>
+      {/* ---- Navegação ---- */}
+      {estado.passo < ultimo && (
+        <div className="flex items-center justify-between gap-3">
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={estado.passo === 0}
+            onClick={() =>
+              // No modo rápido os passos 2-4 são uma tela só: voltar de dentro
+              // dela tem que sair da faixa inteira, não repetir a mesma página.
+              rapido && estado.passo >= 2 && estado.passo <= 4
+                ? despachar({ tipo: "passo", passo: 1 })
+                : despachar({ tipo: "voltar" })
+            }
+          >
+            Voltar
+          </button>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-page p-3 text-sm">
-            <span className="text-ink2">
-              Câmbio {cambio?.currency ?? form.moeda}:{" "}
-              <strong>{cambio ? formatBRL(cambio.rate) : "…"}</strong>
-              {cambio ? (
-                <em className={`ml-1 text-xs ${cambio.simulado ? "text-muted" : "text-teal-text"}`}>
-                  {cambio.simulado ? "(simulado)" : "(tempo real)"}
-                </em>
-              ) : null}
-            </span>
-            {quantidade > 1 ? (
-              <span className="text-ink2">
-                FOB total: <strong>{formatMoeda(fobTotalMoeda, form.moeda)}</strong>
-                <em className="ml-1 text-xs text-muted">({quantidade} un)</em>
-              </span>
-            ) : null}
-            <span className="text-ink2">
-              Valor aduaneiro estimado: <strong>{formatBRL(vaPreview)}</strong>
-            </span>
-          </div>
-
-          <div className="flex justify-between">
-            <button className="btn-secondary" onClick={() => setStep(0)}>
-              Voltar
+          {(rapido && estado.passo >= 2) || estado.passo === 4 ? (
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={estado.carregando || !todosConfirmados(estado)}
+              onClick={calcular}
+            >
+              {estado.carregando ? "Calculando…" : "Calcular custo total"}
             </button>
-            <button className="btn-primary" onClick={() => setStep(2)} disabled={!podeIrValores}>
+          ) : (
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={!podeAvancar(estado)}
+              onClick={() => despachar({ tipo: "avancar" })}
+            >
               Continuar
             </button>
-          </div>
+          )}
         </div>
-      ) : null}
-
-      {/* ── Etapa 2: Custos variáveis ────────────────────────────── */}
-      {step === 2 ? (
-        <div className="card space-y-4 p-5">
-          <NcmChip ncm={ncm} descricao={ncmDescricao} />
-          <p className="text-sm text-ink2">
-            Custos informados manualmente (RF09). Siscomex e AFRMM entram também na base do ICMS.
-          </p>
-
-          {/* Quick-fill de cadastros salvos */}
-          {despachantes.length > 0 || custos.length > 0 ? (
-            <div className="rounded-lg border border-line bg-page p-3">
-              <p className="mb-2 text-xs font-semibold uppercase text-muted">
-                Reaproveitar cadastros salvos
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {despachantes.map((d) => (
-                  <button
-                    key={d.id}
-                    className="badge bg-accent-bg text-accent-text hover:opacity-80"
-                    onClick={() => set("despachante", String(d.honorarios))}
-                  >
-                    {d.nome} · {formatBRL(d.honorarios)}
-                  </button>
-                ))}
-                {custos.map((c) => (
-                  <button
-                    key={c.id}
-                    className="badge bg-teal-bg text-teal-text hover:opacity-80"
-                    onClick={() =>
-                      set(
-                        (["frete", "thc", "armazenagem", "siscomex", "afrmm"].includes(c.tipo)
-                          ? c.tipo === "frete"
-                            ? "freteInternacional"
-                            : (c.tipo as keyof typeof emptyForm)
-                          : "outrosCustos") as keyof typeof emptyForm,
-                        String(c.valor),
-                      )
-                    }
-                  >
-                    {c.descricao} · {formatBRL(c.valor)}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <CampoCusto label="Taxa Siscomex (R$)" value={form.siscomex} onChange={(v) => set("siscomex", v)} />
-            <CampoCusto label="AFRMM (R$) — frete marítimo SP/RJ" value={form.afrmm} onChange={(v) => set("afrmm", v)} />
-            <div>
-              <div className="flex items-center justify-between">
-                <label className="label">THC (R$)</label>
-                <button
-                  type="button"
-                  className="text-xs text-accent-text hover:underline"
-                  onClick={() => set("thc", (Math.round(fobBrl * 0.01 * 100) / 100).toString())}
-                >
-                  Sugerir ~1%
-                </button>
-              </div>
-              <MoneyInput
-                value={Number(form.thc) || 0}
-                onValueChange={(n) => set("thc", n ? String(n) : "")}
-              />
-            </div>
-            <CampoCusto label="Armazenagem (R$)" value={form.armazenagem} onChange={(v) => set("armazenagem", v)} />
-            <CampoCusto
-              label="Honorários de despachante (R$)"
-              value={form.despachante}
-              onChange={(v) => set("despachante", v)}
-            />
-            <CampoCusto label="Outros custos (R$)" value={form.outrosCustos} onChange={(v) => set("outrosCustos", v)} />
-          </div>
-
-          <div className="flex justify-between">
-            <button className="btn-secondary" onClick={() => setStep(1)}>
-              Voltar
-            </button>
-            <button className="btn-primary" onClick={calcular} disabled={carregando}>
-              {carregando ? "Calculando…" : "Calcular landed cost"}
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {/* ── Etapa 3: Resultado ───────────────────────────────────── */}
-      {step === 3 && resultado ? (
-        <div className="space-y-5">
-          <ResultadoBreakdown resultado={resultado} simId={simId} />
-          <div className="flex flex-wrap gap-3">
-            <button className="btn-primary" onClick={novaSimulacao}>
-              Nova simulação
-            </button>
-            <Link className="btn-secondary" href="/historico">
-              Ver histórico
-            </Link>
-          </div>
-        </div>
-      ) : null}
-
-      {step < 3 ? <DisclaimerBanner /> : null}
+      )}
     </div>
   );
 }
 
-function NcmChip({ ncm, descricao }: { ncm: string; descricao?: string }) {
+function Secao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2 rounded-lg bg-accent-bg px-3 py-2 text-sm text-accent-text">
-      <span className="badge bg-white/60">NCM confirmado</span>
-      <span className="font-mono font-semibold">{ncm}</span>
-      {descricao ? <span className="truncate text-xs opacity-80">· {descricao}</span> : null}
-    </div>
-  );
-}
-
-function CampoCusto({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div>
-      <label className="label">{label}</label>
-      <MoneyInput
-        value={Number(value) || 0}
-        onValueChange={(n) => onChange(n ? String(n) : "")}
-      />
-    </div>
+    <section>
+      <h2 className="mb-3 border-b border-line pb-2 text-sm font-bold text-ink">{titulo}</h2>
+      {children}
+    </section>
   );
 }

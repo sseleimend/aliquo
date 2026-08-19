@@ -6,7 +6,7 @@ const modulos = [
   {
     tag: "A",
     titulo: "Descoberta de NCM via IA",
-    desc: "Informe o NCM ou descreva o produto — a IA refina em até 5 perguntas e sugere 2 a 3 candidatos.",
+    desc: "Descreva o produto e a busca recupera candidatos REAIS da base oficial da Receita, com o texto legal à vista. Nenhum código é inventado.",
   },
   {
     tag: "B",
@@ -56,7 +56,7 @@ export default async function Home() {
       <main className="mx-auto max-w-5xl px-6">
         <section className="py-16 text-center">
           <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">
-            Protótipo · Simulador Tributário e Landed Cost
+            Simulador de custo de importação
           </p>
           <h1 className="mx-auto max-w-2xl text-4xl font-semibold leading-tight text-ink">
             Classifique o NCM, calcule os tributos e o custo total de nacionalização.

@@ -13,8 +13,8 @@ export function LoginForm({
   callbackUrl: string;
 }) {
   const router = useRouter();
-  const [email, setEmail] = useState("demo@aliquo.com");
-  const [password, setPassword] = useState("demo123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -94,9 +94,6 @@ export function LoginForm({
         <Link href="/cadastro" className="font-medium text-accent-text hover:underline">
           Criar conta
         </Link>
-      </p>
-      <p className="rounded-md bg-teal-bg px-3 py-2 text-center text-xs text-teal-text">
-        Conta demo pré-preenchida: <strong>demo@aliquo.com</strong> / <strong>demo123</strong>
       </p>
     </div>
   );

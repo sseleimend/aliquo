@@ -4,12 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
+import { SeletorPlano } from "./SeletorPlano";
 
 export function RegisterForm() {
   const router = useRouter();
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [plano, setPlano] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -21,7 +23,7 @@ export function RegisterForm() {
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: nome, email, password }),
+        body: JSON.stringify({ name: nome, email, password, plano: plano || undefined }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -79,6 +81,20 @@ export function RegisterForm() {
         />
         <p className="mt-1 text-xs text-muted">Mínimo de 6 caracteres.</p>
       </div>
+
+      <SeletorPlano valor={plano} onChange={setPlano} />
+
+      <p className="text-xs text-muted">
+        Ao criar a conta você concorda com os{" "}
+        <Link href="/termos" className="text-accent-text hover:underline">
+          termos de uso
+        </Link>{" "}
+        e a{" "}
+        <Link href="/privacidade" className="text-accent-text hover:underline">
+          política de privacidade
+        </Link>
+        .
+      </p>
 
       {erro ? (
         <p className="rounded-md bg-danger-bg px-3 py-2 text-sm text-danger-text">{erro}</p>

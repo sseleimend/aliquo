@@ -1,24 +1,21 @@
-// Rodapé com placeholders de Termos/Privacidade — o PRD (§8, §11) registra que
-// não existe termo de uso nem política de privacidade formal ainda.
+import Link from "next/link";
+
 export function Footer() {
   return (
     <footer className="mt-16 border-t border-line py-8 text-center text-xs text-muted">
-      <p>Aliquo · protótipo — Simulador Tributário e Landed Cost</p>
+      <p>Aliquo — simulador de custo de importação</p>
       <p className="mt-1">
-        <span
-          title="Pendência registrada no PRD (§11): termo de uso ainda não existe."
-          className="cursor-help underline decoration-dotted"
-        >
+        <Link href="/termos" className="hover:underline">
           Termos de uso
-        </span>{" "}
+        </Link>{" "}
         ·{" "}
-        <span
-          title="Pendência registrada no PRD (§11): política de privacidade/LGPD ainda não existe."
-          className="cursor-help underline decoration-dotted"
-        >
+        <Link href="/privacidade" className="hover:underline">
           Política de privacidade
-        </span>{" "}
-        <em>(pendentes — ver PRD §11)</em>
+        </Link>
+      </p>
+      <p className="mx-auto mt-2 max-w-2xl">
+        As simulações são geradas a partir de bases públicas e não constituem classificação
+        fiscal oficial nem parecer tributário.
       </p>
     </footer>
   );
