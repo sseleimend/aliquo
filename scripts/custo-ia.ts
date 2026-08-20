@@ -8,6 +8,7 @@
  * Uso: npm run custo:ia [AAAA-MM]
  */
 
+import "./lib/env";
 import { prisma } from "../src/lib/db";
 import { precoDe, ratearAssinatura } from "../src/lib/llm/custo";
 import { competenciaAtual } from "../src/lib/plans";

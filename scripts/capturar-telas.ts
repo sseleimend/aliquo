@@ -13,7 +13,8 @@ import { existsSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { encode } from "next-auth/jwt";
-import { PrismaClient } from "@prisma/client";
+import "./lib/env";
+import { criarPrismaClient } from "../src/lib/db";
 
 const BASE = "http://localhost:3000";
 const SAIDA = path.resolve(process.cwd(), "var", "shots");
@@ -94,7 +95,7 @@ async function main() {
   const largura = Number(argv[argv.indexOf("--largura") + 1]) || 1440;
 
   // --- Sessão, sem senha ---
-  const prisma = new PrismaClient();
+  const prisma = criarPrismaClient();
   const user =
     (await prisma.user.findFirst({ where: { email: "teste@aliquo.com" } })) ??
     (await prisma.user.findFirst());
@@ -258,7 +259,7 @@ async function main() {
     return r.result?.value === true;
   }
 
-  const prisma2 = new PrismaClient();
+  const prisma2 = criarPrismaClient();
   const imp = await prisma2.importacao.findFirst({
     where: { userId: user.id },
     orderBy: { createdAt: "desc" },
@@ -269,7 +270,7 @@ async function main() {
   if (imp) {
     const antes = new Set(
       (await (async () => {
-        const c = new PrismaClient();
+        const c = criarPrismaClient();
         const r = await c.importacao.findMany({ where: { userId: user.id }, select: { id: true } });
         await c.$disconnect();
         return r;
@@ -312,7 +313,7 @@ async function main() {
     await dormir(600);
     await fotografar({ nome: "07-resultado", url: "", espera: 0 });
 
-    const limpeza = new PrismaClient();
+    const limpeza = criarPrismaClient();
     const criadas = await limpeza.importacao.findMany({
       where: { userId: user.id, id: { notIn: [...antes] } },
       select: { id: true },

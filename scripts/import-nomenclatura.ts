@@ -16,7 +16,8 @@
  *   npx tsx scripts/import-nomenclatura.ts [--download] [--offline] [--sem-ativar]
  */
 
-import { PrismaClient } from "@prisma/client";
+import "./lib/env";
+import { criarPrismaClient } from "../src/lib/db";
 import {
   apenasDigitos,
   limparHtml,
@@ -26,7 +27,7 @@ import {
 } from "../src/lib/ncm/codigo";
 import { FONTES, flags, obterArquivo } from "./lib/fontes";
 
-const prisma = new PrismaClient();
+const prisma = criarPrismaClient();
 
 interface RegistroOficial {
   Codigo: string;

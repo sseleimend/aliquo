@@ -26,10 +26,11 @@
 
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { PrismaClient } from "@prisma/client";
+import "./lib/env";
+import { criarPrismaClient } from "../src/lib/db";
 import { UF_LIST } from "../src/lib/tax/uf";
 
-const prisma = new PrismaClient();
+const prisma = criarPrismaClient();
 
 interface Linha {
   uf: string;

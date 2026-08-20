@@ -4,6 +4,7 @@
  * Uso: npx tsx scripts/verificar-invoice-duplicar.ts
  */
 
+import "./lib/env";
 import { prisma } from "../src/lib/db";
 import { getFileStore, montarChave, sha256, validarArquivo } from "../src/lib/storage";
 import { getCotacao } from "../src/lib/fx";

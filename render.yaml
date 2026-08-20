@@ -1,0 +1,62 @@
+# Blueprint do Render — https://render.com/docs/blueprint-spec
+#
+# Instância free NÃO tem disco persistente: o sistema de arquivos volta ao
+# estado da imagem a cada restart, e o serviço hiberna após ~15 min ocioso.
+# Por isso o banco vive no Turso (libSQL, mesmo dialeto SQLite, com FTS5) e os
+# uploads vão para a tabela ArquivoBlob — nada do que o usuário cria toca o
+# disco do container.
+services:
+  - type: web
+    name: aliquo
+    runtime: node
+    plan: free
+    region: oregon
+    # DATABASE_URL só existe DENTRO do build, para o `prisma generate` resolver
+    # env("DATABASE_URL") do schema. Em runtime ela não existe de propósito: se
+    # TURSO_DATABASE_URL faltar, a aplicação falha dizendo isso, em vez de abrir
+    # um SQLite vazio e efêmero que perderia tudo no próximo restart.
+    buildCommand: npm ci && DATABASE_URL=file:./dev.db npx prisma generate && npm run build
+    startCommand: npm run start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+
+      # Preencher no painel (Environment). O token sai de:
+      #   turso db show aliquo --url
+      #   turso db tokens create aliquo
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
+
+      - key: STORAGE_DRIVER
+        value: db
+
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: AUTH_TRUST_HOST
+        value: "true"
+
+      # Chat de descoberta de NCM — Ollama Cloud pelo endpoint OpenAI-compatível,
+      # mesmo provider e modelo do .env de desenvolvimento.
+      - key: LLM_PROVIDER
+        value: ollama
+      - key: OLLAMA_BASE_URL
+        value: https://ollama.com
+      - key: OLLAMA_MODEL
+        value: gpt-oss:120b
+
+      # Segredo — cole no painel do Render. Não entra aqui: este arquivo vai
+      # para o repositório, e chave em repositório é chave vazada.
+      - key: OLLAMA_API_KEY
+        sync: false
+
+      # Rateio da mensalidade (RNF-5). O Ollama Cloud não cobra por token, então
+      # sem este mapa o custo por simulação fica registrado como desconhecido —
+      # que é o comportamento correto, mas cega o `npm run custo:ia`.
+      - key: LLM_PRECOS
+        value: '{"gpt-oss:120b":{"assinaturaUsdMes":20},"claude-sonnet-5":{"entradaUsdMilhao":3,"saidaUsdMilhao":15},"gemini":{"entradaUsdMilhao":0.3,"saidaUsdMilhao":2.5}}'
+
+      - key: FX_PROVIDER
+        value: awesomeapi

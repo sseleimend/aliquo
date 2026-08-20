@@ -19,11 +19,12 @@
  */
 
 import ExcelJS from "exceljs";
-import { PrismaClient } from "@prisma/client";
+import "./lib/env";
+import { criarPrismaClient } from "../src/lib/db";
 import { apenasDigitos, ehNcmCompleta } from "../src/lib/ncm/codigo";
 import { FONTES, flags, obterArquivo, parseAliquota, textoCelula } from "./lib/fontes";
 
-const prisma = new PrismaClient();
+const prisma = criarPrismaClient();
 
 interface Registro {
   ii?: number | null;

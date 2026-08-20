@@ -1,22 +1,27 @@
 /**
  * Armazenamento de arquivos (RF-D2) atrás de uma interface.
  *
- * A implementação atual grava em disco local, em `var/uploads/` — FORA de
- * `public/`, de propósito: nada aqui pode ser servido por URL adivinhável.
- * O acesso passa sempre por uma rota que confere o dono do arquivo.
+ * Duas implementações, escolhidas por ambiente:
  *
- * Trocar por S3/Blob é implementar a mesma interface; nenhum chamador muda.
- * (Disco local não sobrevive a deploy serverless — quando isso for o alvo,
- * é aqui que a troca acontece.)
+ *   local -> `var/uploads/`, FORA de `public/` de propósito: nada aqui pode
+ *            ser servido por URL adivinhável. Bom em desenvolvimento.
+ *   db    -> bytes numa tabela do próprio banco. É o modo de produção, porque
+ *            host gratuito não tem disco persistente: o sistema de arquivos
+ *            volta ao estado da imagem a cada restart e o upload sumiria.
+ *
+ * Em ambos, o acesso passa por uma rota que confere o dono do arquivo.
+ * Trocar por S3/R2 é implementar a mesma interface; nenhum chamador muda.
  */
 
 import { createHash } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { bancoRemoto, prisma } from "@/lib/db";
 
 export interface FileStore {
   readonly nome: string;
-  put(chave: string, dados: Buffer): Promise<void>;
+  /** `mime` só é usado por backends que guardam o tipo junto dos bytes. */
+  put(chave: string, dados: Buffer, mime?: string): Promise<void>;
   get(chave: string): Promise<Buffer>;
   delete(chave: string): Promise<void>;
 }
@@ -24,14 +29,15 @@ export interface FileStore {
 const RAIZ = path.resolve(process.cwd(), "var", "uploads");
 
 /**
- * Impede que uma chave manipulada escape do diretório de uploads.
+ * Rejeita chave manipulada.
  *
- * REJEITA em vez de sanear: saneando, "../x" e "x" virariam o mesmo caminho e
- * duas chaves distintas colidiriam no mesmo arquivo. As chaves são geradas por
- * `montarChave`, então qualquer coisa fora do formato esperado é sinal de
- * problema e deve falhar ruidosamente.
+ * REJEITA em vez de sanear: saneando, "../x" e "x" virariam a mesma chave e
+ * dois arquivos distintos colidiriam. As chaves são geradas por `montarChave`,
+ * então qualquer coisa fora do formato esperado é sinal de problema e deve
+ * falhar ruidosamente — inclusive no backend de banco, onde a chave é opaca e
+ * um valor estranho denuncia bug ou tentativa de abuso.
  */
-function caminhoSeguro(chave: string): string {
+export function chaveSegura(chave: string): string {
   const normalizada = chave.replace(/\\/g, "/");
 
   const suspeita =
@@ -42,8 +48,12 @@ function caminhoSeguro(chave: string): string {
     normalizada.includes("\0");
 
   if (suspeita) throw new Error("Chave de arquivo inválida.");
+  return normalizada;
+}
 
-  const destino = path.resolve(RAIZ, normalizada);
+/** Impede que uma chave manipulada escape do diretório de uploads. */
+function caminhoSeguro(chave: string): string {
+  const destino = path.resolve(RAIZ, chaveSegura(chave));
   if (!destino.startsWith(RAIZ + path.sep)) {
     throw new Error("Chave de arquivo inválida.");
   }
@@ -68,8 +78,56 @@ export const localFileStore: FileStore = {
   },
 };
 
+/**
+ * Bytes na tabela `ArquivoBlob`, na mesma transação lógica do resto dos dados.
+ *
+ * `put` é upsert: reenviar o arquivo de uma fatura sobrescreve o anterior em
+ * vez de duplicar, espelhando o comportamento de gravar por cima no disco.
+ */
+export const dbFileStore: FileStore = {
+  nome: "db",
+
+  async put(chave, dados, mime) {
+    const registro = {
+      mime: mime || "application/octet-stream",
+      tamanho: dados.byteLength,
+      // Prisma tipa Bytes como Uint8Array; Buffer e um subtipo com ArrayBufferLike.
+      dados: new Uint8Array(dados),
+    };
+    await prisma.arquivoBlob.upsert({
+      where: { chave: chaveSegura(chave) },
+      update: registro,
+      create: { chave: chaveSegura(chave), ...registro },
+    });
+  },
+
+  async get(chave) {
+    const registro = await prisma.arquivoBlob.findUnique({
+      where: { chave: chaveSegura(chave) },
+      select: { dados: true },
+    });
+    // Mesma semântica do disco: ausência é erro, e o chamador devolve 410.
+    if (!registro) throw new Error(`Arquivo ausente no armazenamento: ${chave}`);
+    return Buffer.from(registro.dados);
+  },
+
+  async delete(chave) {
+    await prisma.arquivoBlob.deleteMany({ where: { chave: chaveSegura(chave) } });
+  },
+};
+
+/**
+ * Escolhe o backend.
+ *
+ * O padrão segue o banco: se o banco é remoto, o host quase certamente não tem
+ * disco persistente, então gravar em `var/uploads/` seria perder o arquivo no
+ * próximo deploy. `STORAGE_DRIVER` força um dos dois quando preciso.
+ */
 export function getFileStore(): FileStore {
-  return localFileStore;
+  const escolhido = process.env.STORAGE_DRIVER?.trim().toLowerCase();
+  if (escolhido === "local") return localFileStore;
+  if (escolhido === "db") return dbFileStore;
+  return bancoRemoto() ? dbFileStore : localFileStore;
 }
 
 // ---------------------------------------------------------------------------
