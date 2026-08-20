@@ -70,7 +70,7 @@ export function Passo4FreteSeguro() {
         divergenciaPct={fx.divergenciaPct}
       />
 
-      <p className="text-xs text-muted">
+      <p className="text-xs text-fraco">
         A taxa usada no cálculo é a PTAX de venda do dia útil anterior — a base legal para
         valoração aduaneira. A cotação de mercado aparece só como referência.
       </p>
@@ -87,7 +87,7 @@ export function Passo4FreteSeguro() {
               despachar({ tipo: "campo", campo: "freteInternacional", valor: String(n) })
             }
           />
-          <p className="mt-1 text-xs text-muted">Compõe o valor aduaneiro.</p>
+          <p className="mt-1 text-xs text-fraco">Compõe o valor aduaneiro.</p>
         </div>
 
         <div>
@@ -102,12 +102,12 @@ export function Passo4FreteSeguro() {
               if (n > 0) despachar({ tipo: "campo", campo: "seguroDispensado", valor: false });
             }}
           />
-          <p className="mt-1 text-xs text-muted">Também compõe o valor aduaneiro.</p>
+          <p className="mt-1 text-xs text-fraco">Também compõe o valor aduaneiro.</p>
         </div>
       </div>
 
       {semSeguro && !estado.seguroDispensado && (
-        <div className="rounded-lg border border-warn-border bg-warn-bg p-3 text-sm text-warn-text">
+        <div className="aviso-nota">
           <p className="font-semibold">Seguro recomendado</p>
           <p className="mt-1 text-xs">
             O seguro internacional costuma custar uma fração do valor da carga e cobre perda
@@ -142,7 +142,7 @@ export function Passo4FreteSeguro() {
       )}
 
       {semSeguro && estado.seguroDispensado && (
-        <p className="text-xs text-muted">
+        <p className="text-xs text-fraco">
           Importação sem seguro — registrado. O custo de uma perda total ficaria integralmente
           com você.
         </p>

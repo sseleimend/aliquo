@@ -58,6 +58,25 @@ export interface Rascunho {
   outrosCustos: string;
   criterioRateio: "valor" | "peso" | "quantidade";
 
+  /**
+   * Regime especial de ICMS (RF-B4).
+   *
+   * Benefício estadual de importação não é tabelável — depende de habilitação
+   * do contribuinte e opera por diferimento e crédito presumido. Quem sabe a
+   * carga efetiva é o importador; aqui ele declara, e o resultado registra que
+   * o número veio dele.
+   */
+  icmsRegimeEspecial: boolean;
+  /** Alíquota efetiva em pontos percentuais, como digitada (ex.: "4"). */
+  icmsAliquotaManual: string;
+  /** Identificação do regime, para constar no PDF (ex.: "TTD 409"). */
+  icmsObservacao: string;
+  /**
+   * Se o produto está na lista do adicional estadual de combate à pobreza.
+   * `null` = usar o padrão da UF.
+   */
+  icmsFecpAplicavel: boolean | null;
+
   resultado: ResultadoCalculo | null;
   importacaoId: string | null;
   duplicadaDeId: string | null;
@@ -117,6 +136,10 @@ export function rascunhoInicial(modo: ModoUso = "guiado"): Rascunho {
     despachante: "",
     outrosCustos: "",
     criterioRateio: "valor",
+    icmsRegimeEspecial: false,
+    icmsAliquotaManual: "",
+    icmsObservacao: "",
+    icmsFecpAplicavel: null,
     resultado: null,
     importacaoId: null,
     duplicadaDeId: null,
@@ -284,6 +307,23 @@ export const numero = (s: string): number => {
   return Number.isFinite(n) ? n : 0;
 };
 
+/**
+ * Alíquota de ICMS declarada que não faz sentido.
+ *
+ * O teto de 35% é o mesmo do servidor, mas checado aqui a pessoa descobre o
+ * problema no campo em que digitou, e não numa faixa vermelha depois de clicar
+ * em calcular.
+ */
+export function erroIcmsDeclarado(e: Rascunho): string | null {
+  if (!e.icmsRegimeEspecial) return null;
+  const bruto = e.icmsAliquotaManual.trim();
+  if (!bruto) return "Informe a alíquota efetiva do seu regime especial.";
+  const n = numero(bruto);
+  if (!(n > 0)) return "Informe a alíquota efetiva do seu regime especial.";
+  if (n > 35) return `${bruto}% é alto demais para ICMS. Digite em porcentagem — 4, não 400.`;
+  return null;
+}
+
 export function itemAtivo(e: Rascunho): ItemRascunho {
   return e.itens[e.itemAtivo] ?? e.itens[0];
 }
@@ -339,6 +379,13 @@ export function paraPayload(e: Rascunho) {
     incoterm: e.incoterm,
     regimeTributario: e.regimeTributario,
     criterioRateio: e.criterioRateio,
+    // Em porcentagem, como foi digitado — quem divide por 100 é o servidor.
+    icmsAliquotaPercent:
+      e.icmsRegimeEspecial && e.icmsAliquotaManual
+        ? numero(e.icmsAliquotaManual)
+        : undefined,
+    icmsObservacao: e.icmsRegimeEspecial ? e.icmsObservacao || undefined : undefined,
+    fecpAplicavel: e.icmsFecpAplicavel ?? undefined,
     itens: e.itens.map((i) => ({
       ncm: i.ncm,
       descricaoProduto: i.descricaoProduto || undefined,

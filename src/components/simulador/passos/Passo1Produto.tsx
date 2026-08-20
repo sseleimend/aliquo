@@ -107,7 +107,7 @@ export function Passo1Produto({ baseAto }: { baseAto?: string }) {
 
       {aba === "historico" && (
         <div className="space-y-3">
-          <p className="text-sm text-muted">
+          <p className="text-sm text-fraco">
             Comece a partir de uma importação que você já fez — produtos, NCMs confirmadas,
             quantidades, custos e a fatura anexada vêm junto.
           </p>
@@ -176,7 +176,7 @@ export function Passo1Produto({ baseAto }: { baseAto?: string }) {
           )}
 
           {verificado && !verificado.encontrado && (
-            <div className="rounded-lg border border-danger-border bg-danger-bg px-3 py-2 text-sm text-danger-text">
+            <div className="aviso-carimbo">
               {verificado.aviso ?? "NCM não encontrada na base oficial."}
             </div>
           )}

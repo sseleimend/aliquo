@@ -40,7 +40,9 @@ export async function gerarExcel({
   ws.addRow(["UF de destino", resultado.uf || "não informada"]);
   ws.addRow(["Regime tributário", resultado.regime.replace(/_/g, " ")]);
   ws.addRow(["Moeda", resultado.moeda]);
-  ws.addRow(["Taxa de câmbio", resultado.taxaCambio]);
+  // Número cheio com formato explícito: no "Geral" a coluna estreita pode
+  // exibir 5,20 e refazer na planilha o erro que corrigimos na tela.
+  ws.addRow(["Taxa de câmbio", resultado.taxaCambio]).getCell(2).numFmt = "0.0000";
   ws.addRow(["Fonte do câmbio", resultado.fx?.fonte ?? "-"]);
   if (importacaoId) ws.addRow(["Identificador", importacaoId]);
   ws.addRow([]);

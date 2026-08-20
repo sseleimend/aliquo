@@ -9,16 +9,16 @@ export const metadata = { title: "Política de privacidade — Aliquo" };
 export default function PrivacidadePage() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-12">
-      <Link href="/" className="text-sm text-accent-text hover:underline">
+      <Link href="/" className="text-sm text-caneta hover:underline">
         ← Voltar
       </Link>
 
-      <h1 className="mt-4 text-2xl font-bold text-ink">Política de privacidade</h1>
-      <p className="mt-1 text-sm text-muted">Última atualização: agosto de 2026.</p>
+      <h1 className="mt-4 text-2xl font-bold text-tinta">Política de privacidade</h1>
+      <p className="mt-1 text-sm text-fraco">Última atualização: agosto de 2026.</p>
 
-      <div className="mt-6 space-y-5 text-sm leading-relaxed text-ink2">
+      <div className="mt-6 space-y-5 text-sm leading-relaxed text-tinta2">
         <section>
-          <h2 className="text-base font-bold text-ink">1. Dados que coletamos</h2>
+          <h2 className="text-base font-bold text-tinta">1. Dados que coletamos</h2>
           <ul className="mt-1 list-disc space-y-1 pl-5">
             <li>
               <strong>Cadastro:</strong> nome, e-mail e senha (armazenada apenas como hash) ou os
@@ -36,7 +36,7 @@ export default function PrivacidadePage() {
         </section>
 
         <section>
-          <h2 className="text-base font-bold text-ink">2. Para que usamos</h2>
+          <h2 className="text-base font-bold text-tinta">2. Para que usamos</h2>
           <p className="mt-1">
             Para operar o serviço, manter seu histórico de importações, aplicar os limites do
             plano contratado e melhorar a qualidade das sugestões de classificação.
@@ -44,7 +44,7 @@ export default function PrivacidadePage() {
         </section>
 
         <section>
-          <h2 className="text-base font-bold text-ink">3. Compartilhamento com terceiros</h2>
+          <h2 className="text-base font-bold text-tinta">3. Compartilhamento com terceiros</h2>
           <p className="mt-1">
             Descrições de produto podem ser enviadas a um provedor de modelo de linguagem para
             traduzir o texto ao vocabulário técnico da nomenclatura e ordenar candidatos.{" "}
@@ -55,7 +55,7 @@ export default function PrivacidadePage() {
         </section>
 
         <section>
-          <h2 className="text-base font-bold text-ink">4. Retenção e exclusão</h2>
+          <h2 className="text-base font-bold text-tinta">4. Retenção e exclusão</h2>
           <p className="mt-1">
             Seus dados permanecem enquanto a conta existir. Você pode excluir simulações
             individualmente e solicitar a exclusão da conta e de todos os dados associados pelo
@@ -64,7 +64,7 @@ export default function PrivacidadePage() {
         </section>
 
         <section>
-          <h2 className="text-base font-bold text-ink">5. Seus direitos (LGPD)</h2>
+          <h2 className="text-base font-bold text-tinta">5. Seus direitos (LGPD)</h2>
           <p className="mt-1">
             Você pode solicitar acesso, correção, portabilidade ou exclusão dos seus dados
             pessoais, bem como revogar consentimentos, entrando em contato pelo suporte.

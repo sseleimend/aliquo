@@ -15,7 +15,7 @@ export function Passo2Ncm({ baseAto }: { baseAto?: string }) {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted">
+      <p className="text-sm text-fraco">
         Confira as classificações antes de calcular. Cada uma mostra o texto oficial que a
         sustenta — a decisão final é sua.
       </p>
@@ -24,7 +24,7 @@ export function Passo2Ncm({ baseAto }: { baseAto?: string }) {
         {estado.itens.map((item, i) => (
           <div key={item.id} className="space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted">
+              <span className="text-xs font-semibold uppercase tracking-wide text-fraco">
                 Item {i + 1}
                 {item.descricaoProduto ? ` · ${item.descricaoProduto}` : ""}
               </span>
@@ -42,7 +42,7 @@ export function Passo2Ncm({ baseAto }: { baseAto?: string }) {
                 {estado.itens.length > 1 && (
                   <button
                     type="button"
-                    className="btn-ghost text-xs text-danger-text"
+                    className="btn-ghost text-xs text-carimbo"
                     onClick={() => despachar({ tipo: "item.remove", indice: i })}
                   >
                     Remover
@@ -62,7 +62,7 @@ export function Passo2Ncm({ baseAto }: { baseAto?: string }) {
                 selecionado
               />
             ) : (
-              <div className="rounded-lg border border-warn-border bg-warn-bg px-3 py-2 text-sm text-warn-text">
+              <div className="aviso-nota">
                 Este item ainda não tem NCM confirmada — o cálculo não prossegue sem ela.
               </div>
             )}

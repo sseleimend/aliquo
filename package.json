@@ -20,7 +20,8 @@
     "base:import": "npm run base:nomenclatura && npm run base:aliquotas && npm run ncm:index",
     "ncm:eval": "tsx scripts/ncm-eval.ts",
     "custo:ia": "tsx scripts/custo-ia.ts",
-    "verificar:migracao": "tsx scripts/verificar-migracao.ts"
+    "verificar:migracao": "tsx scripts/verificar-migracao.ts",
+    "telas": "tsx scripts/capturar-telas.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

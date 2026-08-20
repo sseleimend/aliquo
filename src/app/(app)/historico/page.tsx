@@ -3,6 +3,7 @@ import { getUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { formatBRL, formatData } from "@/lib/format";
 import { formatarNcm } from "@/lib/ncm/codigo";
+import { CabecalhoPagina } from "@/components/app/CabecalhoPagina";
 import { AcoesImportacao } from "@/components/historico/AcoesImportacao";
 import { ImportarHistorico } from "@/components/historico/ImportarHistorico";
 
@@ -13,75 +14,136 @@ export default async function HistoricoPage() {
         where: { userId },
         orderBy: { createdAt: "desc" },
         take: 100,
-        include: { itens: { select: { ncm: true, descricaoProduto: true }, orderBy: { ordem: "asc" } } },
+        include: {
+          itens: { select: { ncm: true, descricaoProduto: true }, orderBy: { ordem: "asc" } },
+        },
       })
     : [];
 
+  const total = importacoes.reduce((s, i) => s + i.landedCost, 0);
+  const provisorias = importacoes.filter((i) => i.provisorio).length;
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-ink">Histórico de importações</h1>
-          <p className="text-sm text-ink2">
-            Cada simulação guarda as alíquotas, o câmbio e a versão das regras usadas.
-          </p>
-        </div>
-        <Link href="/simulador?novo=1" className="btn-primary">
-          Nova simulação
-        </Link>
-      </div>
-
-      <ImportarHistorico />
-
-      {importacoes.length === 0 ? (
-        <div className="card p-8 text-center text-sm text-muted">
-          Nenhuma importação ainda.{" "}
-          <Link href="/simulador?novo=1" className="text-accent-text hover:underline">
-            Faça a primeira.
+    <>
+      <CabecalhoPagina
+        titulo="Histórico de importações"
+        descricao="Cada registro guarda as alíquotas, o câmbio e a versão das regras que produziram o número."
+        acoes={
+          <Link href="/simulador?novo=1" className="btn-primary">
+            Nova simulação
           </Link>
-        </div>
-      ) : (
-        <div className="card overflow-x-auto">
-          <table className="w-full min-w-[720px] text-sm">
-            <thead>
-              <tr className="text-left text-xs uppercase text-muted">
-                <th className="px-4 py-3 font-semibold">Data</th>
-                <th className="px-4 py-3 font-semibold">NCM</th>
-                <th className="px-4 py-3 font-semibold">Produto</th>
-                <th className="px-4 py-3 font-semibold">UF</th>
-                <th className="px-4 py-3 text-right font-semibold">Landed cost</th>
-                <th className="px-4 py-3 text-right font-semibold">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {importacoes.map((imp) => (
-                <tr key={imp.id} className="border-t border-line">
-                  <td className="px-4 py-3 text-ink2">{formatData(imp.createdAt)}</td>
-                  <td className="px-4 py-3 font-mono">
-                    {imp.itens[0] ? formatarNcm(imp.itens[0].ncm) : "—"}
-                    {imp.itens.length > 1 && (
-                      <span className="ml-1 text-xs text-muted">+{imp.itens.length - 1}</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-ink2">
-                    {imp.apelido ?? imp.itens[0]?.descricaoProduto ?? "—"}
-                  </td>
-                  <td className="px-4 py-3">{imp.uf}</td>
-                  <td className="px-4 py-3 text-right font-semibold tabular-nums">
-                    {formatBRL(imp.landedCost)}
-                    {imp.provisorio && (
-                      <span className="badge ml-2 bg-danger-bg text-danger-text">provisório</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <AcoesImportacao id={imp.id} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        }
+      />
+
+      {/* Tiras de resumo — números do documento, não cartões decorativos. */}
+      {importacoes.length > 0 && (
+        <div className="mb-6 grid gap-px overflow-hidden rounded border border-fio bg-fio sm:grid-cols-3">
+          <Resumo rotulo="Importações" valor={String(importacoes.length)} />
+          <Resumo rotulo="Custo acumulado" valor={formatBRL(total)} />
+          <Resumo
+            rotulo="Provisórias"
+            valor={String(provisorias)}
+            alerta={provisorias > 0}
+            nota={provisorias > 0 ? "faltam alíquotas oficiais" : "todas conferidas"}
+          />
         </div>
       )}
+
+      <div className="mb-6">
+        <ImportarHistorico />
+      </div>
+
+      {importacoes.length === 0 ? (
+        <div className="painel">
+          <div className="px-6 py-12 text-center">
+            <p className="font-serifa text-[17px] text-tinta">Nenhuma importação registrada</p>
+            <p className="mx-auto mt-1.5 max-w-md text-[13.5px] text-tinta2">
+              Faça a primeira simulação, ou traga seu histórico de outra ferramenta pela
+              planilha acima.
+            </p>
+            <Link href="/simulador?novo=1" className="btn-primary mt-5">
+              Começar uma simulação
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <div className="painel overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="tabela min-w-[760px]">
+              <thead>
+                <tr>
+                  <th className="w-[130px]">Data</th>
+                  <th className="w-[120px]">NCM</th>
+                  <th>Produto</th>
+                  <th className="w-[56px]">UF</th>
+                  <th className="w-[150px] text-right">Landed cost</th>
+                  <th className="w-[230px] text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {importacoes.map((imp) => (
+                  <tr key={imp.id}>
+                    <td className="whitespace-nowrap text-tinta2">{formatData(imp.createdAt)}</td>
+                    <td>
+                      <span className="codigo">
+                        {imp.itens[0] ? formatarNcm(imp.itens[0].ncm) : "—"}
+                      </span>
+                      {imp.itens.length > 1 && (
+                        <span className="ml-1.5 text-[11px] text-fraco">
+                          +{imp.itens.length - 1}
+                        </span>
+                      )}
+                    </td>
+                    <td className="text-tinta2">
+                      <span className="line-clamp-2">
+                        {imp.apelido ?? imp.itens[0]?.descricaoProduto ?? "—"}
+                      </span>
+                    </td>
+                    <td className="text-tinta2">{imp.uf}</td>
+                    <td className="text-right">
+                      <span className="font-mono text-[13.5px] font-medium text-tinta">
+                        {formatBRL(imp.landedCost)}
+                      </span>
+                      {imp.provisorio && (
+                        <span className="selo-carimbo ml-2">provisório</span>
+                      )}
+                    </td>
+                    <td className="text-right">
+                      <AcoesImportacao id={imp.id} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function Resumo({
+  rotulo,
+  valor,
+  nota,
+  alerta,
+}: {
+  rotulo: string;
+  valor: string;
+  nota?: string;
+  alerta?: boolean;
+}) {
+  return (
+    <div className="bg-folha px-5 py-4">
+      <p className="secao">{rotulo}</p>
+      <p
+        className={`mt-1.5 font-mono text-[21px] font-medium leading-none ${
+          alerta ? "text-carimbo" : "text-tinta"
+        }`}
+      >
+        {valor}
+      </p>
+      {nota && <p className="mt-1.5 text-[11.5px] text-fraco">{nota}</p>}
     </div>
   );
 }

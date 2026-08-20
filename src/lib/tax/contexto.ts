@@ -11,7 +11,7 @@ import { prisma } from "@/lib/db";
 import { apenasDigitos } from "@/lib/ncm/codigo";
 import { getRuleSet, getRuleSetPorData, RULESET_PADRAO_ID } from "./rulesets";
 import type { RegimeTributario } from "./rulesets/tipos";
-import { getIcmsRate, PIS_IMPORTACAO, COFINS_IMPORTACAO, FONTE_ICMS } from "./rates";
+import { getIcmsUf, totalIcms, PIS_IMPORTACAO, COFINS_IMPORTACAO } from "./rates";
 import type { Aliquota, AliquotasNcm, ContextoCalculo, CotacaoUsada } from "./types";
 
 export interface OpcoesContexto {
@@ -21,6 +21,21 @@ export interface OpcoesContexto {
   dataReferencia?: string;
   rulesetId?: string;
   fx?: CotacaoUsada;
+
+  /**
+   * Alíquota efetiva de ICMS declarada pelo usuário (fração, ex.: 0.04).
+   *
+   * Existe porque benefício estadual de importação — TTD catarinense,
+   * COMEXPRODUZIR goiano, INVEST-ES — não é tabelável: depende de habilitação
+   * do contribuinte e opera por diferimento e crédito presumido. Nenhuma
+   * tabela acerta isso. Quem sabe é o importador, então ele informa e a
+   * origem do número fica registrada como dele.
+   */
+  icmsManual?: number | null;
+  /** Se o produto está na lista do adicional de combate à pobreza do estado. */
+  fecpAplicavel?: boolean | null;
+  /** Identificação do regime especial, para constar no PDF. */
+  icmsObservacao?: string;
 }
 
 function desconhecida(motivo: string): Aliquota {
@@ -108,10 +123,52 @@ export async function resolverContexto(opts: OpcoesContexto): Promise<ContextoCa
   }
 
   const uf = (opts.uf || "").toUpperCase();
-  const icmsRate = await getIcmsRate(uf);
-  const icms: Aliquota = uf
-    ? { conhecida: true, valor: icmsRate, fonte: FONTE_ICMS }
-    : desconhecida("UF de destino não informada");
+  const detalheUf = await getIcmsUf(uf);
+  const observacao = opts.icmsObservacao?.trim() || undefined;
+
+  let icms: Aliquota;
+  let icmsDetalhe: ContextoCalculo["icmsDetalhe"];
+
+  if (opts.icmsManual != null && Number.isFinite(opts.icmsManual)) {
+    // Declaração do usuário vence a tabela: ele conhece o próprio regime.
+    icms = {
+      conhecida: true,
+      valor: opts.icmsManual,
+      fonte: observacao
+        ? `informada por você — regime especial (${observacao})`
+        : "informada por você — regime especial",
+      manual: true,
+    };
+    icmsDetalhe = {
+      interna: opts.icmsManual,
+      fecp: 0,
+      fecpAplicado: false,
+      estimativa: false,
+      declarado: true,
+      observacao,
+    };
+  } else if (!detalheUf) {
+    icms = desconhecida("UF de destino não informada");
+  } else {
+    const fecpAplicado = opts.fecpAplicavel ?? detalheUf.fecpPadrao;
+    const valor = totalIcms(detalheUf, opts.fecpAplicavel);
+    icms = {
+      conhecida: true,
+      valor,
+      fonte:
+        detalheUf.fecp > 0 && fecpAplicado
+          ? `${detalheUf.fonte} · inclui ${(detalheUf.fecp * 100).toLocaleString("pt-BR")}% de adicional (FECP)`
+          : detalheUf.fonte,
+    };
+    icmsDetalhe = {
+      interna: detalheUf.interna,
+      fecp: detalheUf.fecp,
+      fecpAplicado,
+      estimativa: detalheUf.estimativa,
+      declarado: false,
+      observacao,
+    };
+  }
 
   return {
     rulesetId: ruleset.id,
@@ -120,6 +177,7 @@ export async function resolverContexto(opts: OpcoesContexto): Promise<ContextoCa
     regime: opts.regime ?? "lucro_real",
     uf,
     icms,
+    icmsDetalhe,
     porNcm,
     baseVersaoId: versaoNom?.id,
     baseAto: versaoNom?.ato,

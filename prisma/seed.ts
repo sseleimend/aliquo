@@ -68,20 +68,23 @@ async function main() {
   }
 
   // --- Alíquotas de ICMS por UF ------------------------------------------
-  // Versionadas em banco para poderem ser corrigidas sem deploy. Marcadas
-  // como estimativa: não capturam benefícios estaduais de importação.
+  // Versionadas em banco para poderem ser corrigidas sem deploy, e marcadas
+  // como ESTIMATIVA: não há tabela oficial consolidada dos 27 estados, e esta
+  // não captura benefício estadual de importação. Para substituir por dado
+  // real: `npx tsx scripts/importar-aliquotas-uf.ts <arquivo.csv>`.
   const vigenciaIni = new Date("2026-01-01T00:00:00.000Z");
-  for (const [uf, aliquota] of Object.entries(ICMS_POR_UF)) {
+  const fonteEstimada = "estimativa — confirmar na SEFAZ do estado";
+  for (const [uf, v] of Object.entries(ICMS_POR_UF)) {
+    const dados = {
+      aliquota: v.interna,
+      fecp: v.fecp,
+      fecpPadrao: v.fecpPadrao,
+      fonte: fonteEstimada,
+    };
     await prisma.aliquotaUf.upsert({
       where: { uf_vigenciaIni: { uf, vigenciaIni } },
-      update: { aliquota, fonte: "estimativa — confirmar na SEFAZ do estado" },
-      create: {
-        uf,
-        aliquota,
-        fecp: 0,
-        vigenciaIni,
-        fonte: "estimativa — confirmar na SEFAZ do estado",
-      },
+      update: dados,
+      create: { uf, vigenciaIni, ...dados },
     });
   }
 

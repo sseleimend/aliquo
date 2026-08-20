@@ -180,9 +180,15 @@ busca na base oficial — degradada, porém correta.
 
 ## Limites conhecidos
 
-- **ICMS** usa alíquotas gerais estimadas por UF; não captura benefícios
-  estaduais de importação (TTD/SC, regimes de GO/ES), que mudam a alíquota
-  efetiva em mais de 10 pontos. É o ponto do cálculo com maior margem de erro.
+Detalhados, com remediação e o que fecharia cada um, em
+[docs/limitacoes.md](docs/limitacoes.md). Em resumo:
+
+- **ICMS** usa alíquotas gerais estimadas por UF — não existe tabela oficial
+  consolidada dos 27 estados. Carregue a real com
+  `npx tsx scripts/importar-aliquotas-uf.ts <arquivo.csv>`. Benefício estadual
+  de importação (TTD/SC, GO/ES) não é tabelável: o usuário declara a carga
+  efetiva no passo de custos e tributos, e o resultado registra que o número
+  veio dele.
 - **Ex-tarifários e listas de exceção** (BK/BIT) são importados e sinalizados,
   mas não aplicados automaticamente.
 - **IBS/CBS** entra como CBS em fase de teste; o cálculo dual da transição
