@@ -3,6 +3,7 @@ import { getUserId } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { formatBRL, formatData } from "@/lib/format";
 import { formatarNcm } from "@/lib/ncm/codigo";
+import { calcularIndicadores } from "@/lib/historico/indicadores";
 import { CabecalhoPagina } from "@/components/app/CabecalhoPagina";
 import { AcoesImportacao } from "@/components/historico/AcoesImportacao";
 import { ImportarHistorico } from "@/components/historico/ImportarHistorico";
@@ -20,14 +21,7 @@ export default async function HistoricoPage() {
       })
     : [];
 
-  // O número grande tem que ser defensável. Simulação provisória está faltando
-  // alíquota oficial — somá-la aqui produziria um acumulado que ninguém
-  // consegue justificar, com o aviso a dois palmos de distância. Fica de fora,
-  // e o que ficou de fora é dito em vez de sumir.
-  const conferidas = importacoes.filter((i) => !i.provisorio);
-  const provisorias = importacoes.filter((i) => i.provisorio);
-  const total = conferidas.reduce((s, i) => s + i.landedCost, 0);
-  const totalProvisorio = provisorias.reduce((s, i) => s + i.landedCost, 0);
+  const ind = calcularIndicadores(importacoes);
 
   return (
     <>
@@ -44,21 +38,17 @@ export default async function HistoricoPage() {
       {/* Tiras de resumo — números do documento, não cartões decorativos. */}
       {importacoes.length > 0 && (
         <div className="mb-6 grid gap-px overflow-hidden rounded border border-fio bg-fio sm:grid-cols-3">
-          <Resumo rotulo="Importações" valor={String(importacoes.length)} />
+          <Resumo rotulo="Importações" valor={String(ind.total)} />
           <Resumo
             rotulo="Custo acumulado"
-            valor={formatBRL(total)}
-            nota={
-              provisorias.length > 0
-                ? `só as conferidas · ${formatBRL(totalProvisorio)} em provisórias fora da conta`
-                : `${conferidas.length} ${conferidas.length === 1 ? "importação" : "importações"}`
-            }
+            valor={formatBRL(ind.custoAcumulado)}
+            nota={ind.notaCusto}
           />
           <Resumo
             rotulo="Provisórias"
-            valor={String(provisorias.length)}
-            alerta={provisorias.length > 0}
-            nota={provisorias.length > 0 ? "faltam alíquotas oficiais" : "todas conferidas"}
+            valor={String(ind.provisorias)}
+            alerta={ind.alerta}
+            nota={ind.notaProvisorias}
           />
         </div>
       )}
