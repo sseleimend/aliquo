@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { MoneyInput } from "@/components/MoneyInput";
 import { formatBRL } from "@/lib/format";
+import { IcmsDeclaracao } from "../IcmsDeclaracao";
 import { useSimulador } from "../SimuladorProvider";
 import { numero, type Rascunho } from "../rascunho";
 
@@ -100,15 +101,17 @@ export function Passo5Custos() {
               value={numero(estado[campo] as string)}
               onValueChange={(n) => despachar({ tipo: "campo", campo, valor: String(n) })}
             />
-            {nota && <p className="mt-1 text-xs text-muted">{nota}</p>}
+            {nota && <p className="mt-1 text-xs text-fraco">{nota}</p>}
           </div>
         ))}
       </div>
 
-      <p className="text-xs text-muted">
+      <p className="text-xs text-fraco">
         Estes custos entram no custo total de nacionalização. Siscomex e AFRMM também compõem a
         base do ICMS, por isso aparecem separados dos demais no resultado.
       </p>
+
+      <IcmsDeclaracao />
     </div>
   );
 }

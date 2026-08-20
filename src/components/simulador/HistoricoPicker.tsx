@@ -61,12 +61,12 @@ export function HistoricoPicker() {
   }
 
   if (carregando) {
-    return <p className="text-sm text-muted">Carregando seu histórico…</p>;
+    return <p className="text-[13px] text-fraco">Carregando seu histórico…</p>;
   }
 
   if (erro) {
     return (
-      <div className="rounded-lg border border-danger-border bg-danger-bg px-3 py-2 text-sm text-danger-text">
+      <div className="aviso-carimbo">
         {erro}
       </div>
     );
@@ -74,7 +74,7 @@ export function HistoricoPicker() {
 
   if (importacoes.length === 0) {
     return (
-      <div className="rounded-lg border border-line bg-page px-4 py-6 text-center text-sm text-muted">
+      <div className="rounded border border-fio bg-papel2 px-4 py-8 text-center text-[13px] text-fraco">
         Você ainda não salvou nenhuma importação. Depois da primeira, ela aparece aqui para
         ser reaproveitada — com produtos, NCMs e fatura.
       </div>
@@ -86,28 +86,28 @@ export function HistoricoPicker() {
       {importacoes.map((imp) => (
         <div
           key={imp.id}
-          className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-white p-3"
+          className="flex flex-wrap items-center justify-between gap-3 rounded border-l-2 border-l-fio2 border-y border-r border-y-fio border-r-fio bg-folha p-3 transition-colors hover:border-l-caneta"
         >
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-ink">
+            <p className="truncate text-[13.5px] font-medium text-tinta">
               {imp.apelido ?? imp.itens[0]?.descricaoProduto ?? "Importação sem apelido"}
             </p>
-            <p className="text-xs text-muted">
+            <p className="text-[11.5px] text-fraco">
               {imp.ncmPrincipal ?? "—"}
               {imp.qtdItens > 1 && ` +${imp.qtdItens - 1} item(ns)`}
               {` · ${imp.uf} · ${formatData(imp.createdAt)}`}
             </p>
-            <p className="text-xs text-muted">
+            <p className="text-xs text-fraco">
               {formatBRL(imp.landedCost)}
               {imp.provisorio && (
-                <span className="badge ml-2 bg-danger-bg text-danger-text">provisório</span>
+                <span className="selo-carimbo ml-2">provisório</span>
               )}
             </p>
           </div>
 
           <button
             type="button"
-            className="btn-secondary shrink-0 text-xs"
+            className="btn-secondary shrink-0"
             disabled={usando !== null}
             onClick={() => usar(imp.id)}
           >
@@ -116,7 +116,7 @@ export function HistoricoPicker() {
         </div>
       ))}
 
-      <p className="pt-1 text-xs text-muted">
+      <p className="pt-1 text-[11.5px] text-fraco">
         Os valores são copiados, mas câmbio e alíquotas serão buscados de novo no cálculo —
         podem ter mudado desde a importação original.
       </p>

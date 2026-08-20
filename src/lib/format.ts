@@ -18,6 +18,22 @@ export function formatMoeda(valor: number, moeda: string): string {
   }
 }
 
+/**
+ * Taxa de câmbio — 4 casas, como o Banco Central publica a PTAX.
+ *
+ * NÃO use `formatBRL` aqui: taxa não é dinheiro. Arredondar 5,2043 para
+ * "R$ 5,20" transforma a linha "US$ 1.200,00 × R$ 5,20 = R$ 6.245,16" numa
+ * conta que não fecha na calculadora do usuário — e conferir a conta é
+ * exatamente o que o produto promete.
+ */
+export function formatTaxa(valor: number): string {
+  const n = Number.isFinite(valor) ? valor : 0;
+  return `R$ ${n.toLocaleString("pt-BR", {
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 4,
+  })}`;
+}
+
 export function formatPct(fracao: number): string {
   return `${(fracao * 100).toLocaleString("pt-BR", {
     minimumFractionDigits: 0,

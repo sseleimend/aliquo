@@ -156,10 +156,16 @@ model NcmFeedback {
 
 // ICMS é estadual — fora da TEC/TIPI, tabela própria com fonte e vigência.
 model AliquotaUf {
-  id          String    @id @default(cuid())
-  uf          String
-  aliquota    Float
-  fecp        Float     @default(0) // adicional, separado — não embutido
+  id       String @id @default(cuid())
+  uf       String
+  aliquota Float // alíquota interna, SEM o adicional
+  fecp     Float  @default(0) // adicional de combate à pobreza, separado
+
+  // O FECP incide sobre listas de produtos definidas por cada estado, não
+  // sobre tudo. Onde o estado aplica de forma geral (com exceções), o
+  // adicional entra por padrão; onde é lista restrita, só se o usuário disser.
+  fecpPadrao Boolean @default(false)
+
   vigenciaIni DateTime  @default(now())
   vigenciaFim DateTime?
   fonte       String    @default("estimativa")

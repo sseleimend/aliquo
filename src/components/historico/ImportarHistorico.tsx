@@ -50,27 +50,27 @@ export function ImportarHistorico() {
   }
 
   return (
-    <div className="card p-4">
+    <div className="painel px-5 py-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-ink">Trazer histórico de outra ferramenta</p>
-          <p className="text-xs text-muted">
+          <p className="text-[13.5px] font-semibold text-tinta">Trazer histórico de outra ferramenta</p>
+          <p className="text-[12.5px] text-tinta2">
             Baixe o modelo, preencha com suas importações e envie — ou reenvie um PDF/Excel
             gerado aqui.
           </p>
         </div>
         <div className="flex shrink-0 gap-2">
-          <a className="btn-secondary text-xs" href="/api/importacoes/template">
+          <a className="btn-secondary" href="/api/importacoes/template">
             Baixar modelo (Excel)
           </a>
-          <button type="button" className="btn-primary text-xs" onClick={() => setAberto((v) => !v)}>
+          <button type="button" className="btn-primary" onClick={() => setAberto((v) => !v)}>
             {aberto ? "Fechar" : "Anexar arquivo"}
           </button>
         </div>
       </div>
 
       {aberto && (
-        <div className="mt-4 space-y-3 border-t border-line pt-4">
+        <div className="mt-4 space-y-3 border-t border-fio pt-4">
           <input
             ref={inputRef}
             type="file"
@@ -82,15 +82,15 @@ export function ImportarHistorico() {
               if (f) enviar(f);
             }}
           />
-          <p className="text-xs text-muted">
+          <p className="text-[12.5px] text-tinta2">
             Planilha no formato do modelo (.xlsx) ou PDF/Excel exportado pelo Aliquo. Até 10 MB.
             Os tributos são recalculados com as alíquotas oficiais de hoje.
           </p>
 
-          {enviando && <p className="text-sm text-muted">Processando…</p>}
+          {enviando && <p className="text-[13px] text-fraco">Processando…</p>}
 
           {resposta?.error && (
-            <div className="rounded-lg border border-danger-border bg-danger-bg px-3 py-2 text-sm text-danger-text">
+            <div className="aviso-carimbo">
               <p>{resposta.error}</p>
               {resposta.baixarTemplate && (
                 <a className="mt-1 inline-block underline" href="/api/importacoes/template">
@@ -101,7 +101,7 @@ export function ImportarHistorico() {
           )}
 
           {resposta?.erros && resposta.erros.length > 0 && (
-            <div className="rounded-lg border border-warn-border bg-warn-bg px-3 py-2 text-xs text-warn-text">
+            <div className="aviso-nota text-[12px]">
               <p className="font-semibold">Linhas ignoradas:</p>
               <ul className="mt-1 space-y-0.5">
                 {resposta.erros.slice(0, 10).map((e, i) => (
@@ -115,13 +115,13 @@ export function ImportarHistorico() {
           )}
 
           {typeof resposta?.criadas === "number" && resposta.criadas > 0 && (
-            <div className="rounded-lg border border-teal-border bg-teal-bg px-3 py-2 text-sm text-teal-text">
+            <div className="aviso-visto">
               {resposta.criadas} importação(ões) trazida(s) para o histórico.
             </div>
           )}
 
           {resposta?.falhas && resposta.falhas.length > 0 && (
-            <div className="rounded-lg border border-danger-border bg-danger-bg px-3 py-2 text-xs text-danger-text">
+            <div className="aviso-carimbo text-[12px]">
               <p className="font-semibold">Não foi possível importar:</p>
               <ul className="mt-1 space-y-0.5">
                 {resposta.falhas.map((f, i) => (

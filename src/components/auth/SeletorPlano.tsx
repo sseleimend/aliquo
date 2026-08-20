@@ -65,7 +65,7 @@ export function SeletorPlano({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (carregando) return <p className="text-xs text-muted">Carregando planos…</p>;
+  if (carregando) return <p className="text-[12px] text-fraco">Carregando planos…</p>;
   if (planos.length === 0) return null;
 
   return (
@@ -82,21 +82,21 @@ export function SeletorPlano({
               type="button"
               onClick={() => onChange(p.codigo)}
               aria-pressed={escolhido}
-              className={`w-full rounded-xl border p-3 text-left transition ${
+              className={`w-full rounded border-l-2 border-y border-r p-3 text-left transition ${
                 escolhido
-                  ? "border-accent-border bg-accent-bg"
-                  : "border-line bg-white hover:border-accent-border"
+                  ? "border-l-caneta border-y-caneta-fio border-r-caneta-fio bg-caneta-fraca"
+                  : "border-l-fio2 border-y-fio border-r-fio bg-folha hover:border-l-caneta"
               }`}
             >
               <div className="flex items-baseline justify-between gap-2">
-                <span className="font-semibold text-ink">{p.nome}</span>
-                <span className="text-sm font-semibold text-accent-text">
+                <span className="font-serifa text-[15px] font-semibold text-tinta">{p.nome}</span>
+                <span className="font-mono text-[14px] font-semibold text-caneta">
                   {gratuito ? "Grátis" : `${formatBRL(p.precoMensalCentavos / 100)}/mês`}
                 </span>
               </div>
-              <ul className="mt-1.5 space-y-0.5 text-xs text-muted">
+              <ul className="mt-2 space-y-0.5 text-[11.5px] text-tinta2">
                 {linhasDoPlano(p.limites).map((l) => (
-                  <li key={l}>· {l}</li>
+                  <li key={l}>— {l}</li>
                 ))}
               </ul>
             </button>
@@ -104,7 +104,7 @@ export function SeletorPlano({
         })}
       </div>
 
-      <p className="mt-2 rounded-lg border border-warn-border bg-warn-bg px-3 py-2 text-xs text-warn-text">
+      <p className="aviso-nota mt-3 text-[12px]">
         <strong>Sem cobrança nesta fase.</strong> O plano escolhido é aplicado direto na conta,
         para você testar os limites de cada tier. A integração de pagamento entra depois.
       </p>

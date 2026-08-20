@@ -57,6 +57,19 @@ export interface ContextoCalculo {
   regime: RegimeTributario;
   uf: string;
   icms: Aliquota;
+  /**
+   * Composição do ICMS, para a tela poder mostrar "20% + 2% FECP" em vez de
+   * um 22% opaco que ninguém consegue conferir.
+   */
+  icmsDetalhe?: {
+    interna: number;
+    fecp: number;
+    fecpAplicado: boolean;
+    estimativa: boolean;
+    /** true quando o usuário declarou regime especial e informou a alíquota. */
+    declarado: boolean;
+    observacao?: string;
+  };
   /** Alíquotas por NCM (chave = 8 dígitos). */
   porNcm: Record<string, AliquotasNcm>;
   baseVersaoId?: string;

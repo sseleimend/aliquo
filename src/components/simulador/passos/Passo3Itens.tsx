@@ -72,19 +72,19 @@ export function Passo3Itens() {
         </div>
       </div>
 
-      <p className="text-xs text-muted">
+      <p className="text-xs text-fraco">
         O regime muda o quanto dos tributos volta como crédito — e portanto o custo efetivo,
         não o desembolso.
       </p>
 
       <div className="space-y-4">
         {estado.itens.map((item, i) => (
-          <div key={item.id} className="card p-4">
+          <div key={item.id} className="painel px-4 py-4">
             <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-              <span className="font-mono text-sm font-semibold text-ink">
+              <span className="font-mono text-sm font-semibold text-tinta">
                 {formatarNcm(item.ncm)}
               </span>
-              <span className="text-xs text-muted">
+              <span className="text-xs text-fraco">
                 {item.descricaoProduto || item.ncmDescricaoOficial}
               </span>
             </div>
@@ -154,7 +154,7 @@ export function Passo3Itens() {
               </div>
             </div>
 
-            <p className="mt-2 text-right text-xs text-muted">
+            <p className="mt-2 text-right text-xs text-fraco">
               Subtotal:{" "}
               {formatMoeda(
                 numero(item.valorUnitarioMoeda) * (numero(item.quantidade) || 1),
@@ -169,7 +169,7 @@ export function Passo3Itens() {
         <button type="button" className="btn-secondary" onClick={() => despachar({ tipo: "item.add" })}>
           + Adicionar item
         </button>
-        <p className="text-sm font-semibold text-ink">
+        <p className="text-sm font-semibold text-tinta">
           Total da fatura: {formatMoeda(total, estado.moeda)}
         </p>
       </div>
@@ -191,7 +191,7 @@ export function Passo3Itens() {
             <option value="peso">Por peso líquido</option>
             <option value="quantidade">Por quantidade</option>
           </select>
-          <p className="mt-1 text-xs text-muted">
+          <p className="mt-1 text-xs text-fraco">
             Frete e seguro chegam no nível do embarque e precisam ser distribuídos entre os itens
             antes de calcular os tributos de cada NCM.
           </p>

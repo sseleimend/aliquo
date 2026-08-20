@@ -23,6 +23,20 @@ const itemSchema = z.object({
   aliquotaIPIManual: z.coerce.number().min(0).max(3).optional(),
 });
 
+/**
+ * Zod devolve mensagem padrão em inglês quando o campo não tem uma própria, e
+ * ela chega crua na tela ("Number must be less than or equal to 0.35") — sem
+ * dizer de qual campo, e falando na unidade interna. Quando isso acontecer,
+ * pelo menos nomeamos o campo.
+ */
+function mensagemDeValidacao(erro: z.ZodError): string {
+  const issue = erro.issues[0];
+  if (!issue) return "Dados inválidos.";
+  const padraoDoZod = /^(Expected|Invalid|Required|Number|String|Array|Too )/.test(issue.message);
+  const campo = issue.path.filter((p) => typeof p === "string").join(".");
+  return padraoDoZod && campo ? `Campo "${campo}": valor inválido.` : issue.message;
+}
+
 const schema = z.object({
   apelido: z.string().max(200).optional(),
   uf: z.string().length(2, "Informe a UF de destino"),
@@ -44,6 +58,20 @@ const schema = z.object({
   despachante: money,
   outrosCustos: money,
   criterioRateio: z.enum(["valor", "peso", "quantidade"]).default("valor"),
+
+  // Regime especial de ICMS declarado pelo usuário, em PONTOS PERCENTUAIS —
+  // a mesma unidade que ele digita. Converter no cliente e validar no servidor
+  // fazia a mensagem de erro falar de "0.35" para quem digitou "40".
+  //
+  // O teto de 35% só barra erro de digitação: a maior alíquota interna do país
+  // é 23% e o adicional não passa de 2%. Não é regra fiscal.
+  icmsAliquotaPercent: z
+    .number({ message: "Informe a alíquota de ICMS em porcentagem (ex.: 4)" })
+    .min(0, "A alíquota de ICMS não pode ser negativa")
+    .max(35, "Alíquota de ICMS acima de 35% — confira se digitou em porcentagem (ex.: 4, não 400)")
+    .optional(),
+  icmsObservacao: z.string().max(120).optional(),
+  fecpAplicavel: z.boolean().optional(),
 });
 
 type Dados = z.infer<typeof schema>;
@@ -138,7 +166,7 @@ export async function POST(req: Request) {
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
-      { error: parsed.error.issues[0]?.message ?? "Dados inválidos" },
+      { error: mensagemDeValidacao(parsed.error) },
       { status: 400 },
     );
   }
@@ -177,6 +205,9 @@ export async function POST(req: Request) {
     ncms: itens.map((i) => i.ncm),
     uf,
     regime: d.regimeTributario,
+    icmsManual: d.icmsAliquotaPercent != null ? d.icmsAliquotaPercent / 100 : undefined,
+    icmsObservacao: d.icmsObservacao,
+    fecpAplicavel: d.fecpAplicavel,
     fx: {
       moeda: cotacao.moeda,
       rate: cotacao.rate,

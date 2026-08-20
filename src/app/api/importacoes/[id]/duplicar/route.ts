@@ -30,6 +30,29 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
   // por peso voltava silenciosamente para rateio por valor.
   const criterioRateio = origem.custos[0]?.criterioRateio ?? "valor";
 
+  // A declaração de regime especial vive no snapshot do contexto (é dele que
+  // saiu a alíquota aplicada). Sem devolvê-la, um reuso de importação com TTD
+  // voltaria calculando pela tabela cheia — erro de pontos percentuais.
+  let icms: { manual?: number; observacao?: string; fecpAplicavel?: boolean } = {};
+  try {
+    const ctxSalvo = JSON.parse(origem.contextoJson) as {
+      icmsDetalhe?: {
+        interna: number;
+        fecpAplicado: boolean;
+        declarado: boolean;
+        observacao?: string;
+      };
+    };
+    const d = ctxSalvo.icmsDetalhe;
+    if (d?.declarado) {
+      icms = { manual: d.interna, observacao: d.observacao, fecpAplicavel: false };
+    } else if (d) {
+      icms = { fecpAplicavel: d.fecpAplicado };
+    }
+  } catch {
+    /* contexto antigo sem o campo — segue com o padrão da UF */
+  }
+
   return NextResponse.json({
     duplicadaDeId: origem.id,
     // A fatura anexada acompanha o reuso: é o mesmo embarque de origem.
@@ -44,6 +67,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
       empresaId: origem.empresaId,
       invoiceId: origem.invoiceId,
       criterioRateio,
+      icms,
       itens: origem.itens.map((i) => ({
         ncm: i.ncm,
         descricaoProduto: i.descricaoProduto,

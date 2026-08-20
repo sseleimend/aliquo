@@ -1,50 +1,94 @@
 import type { Config } from "tailwindcss";
 
+/**
+ * Linguagem visual: "despacho" — documento fiscal moderno.
+ *
+ * As escolhas vêm do que o produto vende: rastreabilidade e fonte oficial.
+ * Papel quente em vez de branco clínico, fios de 1px em vez de sombras
+ * flutuantes, cantos discretos em vez de pílulas, e código NCM sempre em
+ * monoespaçada — é um documento, não um cartão de marketing.
+ *
+ * Duas tintas: VERDE para interação (a cor da caneta) e CARIMBO para estado
+ * que exige atenção. Nenhuma terceira cor decorativa.
+ */
 const config: Config = {
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
-        // Paleta inspirada no PRD do Aliquo
-        page: "#f5f4f1",
-        ink: "#1f1e1c",
-        ink2: "#57554f",
-        muted: "#8a887f",
-        line: "#e3e1da",
-        accent: {
-          DEFAULT: "#185fa5",
-          bg: "#e6f1fb",
-          text: "#0c447c",
-          border: "#85b7eb",
+        // Papel e tinta
+        papel: "#f7f4ee", // fundo — off-white quente, não cinza
+        papel2: "#efe9df", // faixas alternadas, cabeçalho de tabela
+        folha: "#fffdfa", // superfície de painel
+        tinta: "#1c1917", // texto principal
+        tinta2: "#4a443d", // texto secundário
+        fraco: "#8a8177", // meta, rótulos
+        fio: "#ded5c8", // hairline — a régua do documento
+        fio2: "#c9bdab", // hairline com mais presença
+
+        // Tinta de caneta — interação
+        caneta: {
+          DEFAULT: "#1d5c4a",
+          forte: "#123d31",
+          fraca: "#e6efea",
+          fio: "#94b8a9",
         },
-        teal: {
-          bg: "#e1f5ee",
-          text: "#085041",
-          border: "#5dcaa5",
+
+        // Carimbo — pendência, bloqueio, provisório
+        carimbo: {
+          DEFAULT: "#a03c2c",
+          fraca: "#f8ebe7",
+          fio: "#d6a79b",
         },
-        warn: {
-          bg: "#faeeda",
-          text: "#633806",
-          border: "#efc27a",
+
+        // Anotação — aviso, atenção
+        nota: {
+          DEFAULT: "#8a6314",
+          fraca: "#f7f0dd",
+          fio: "#d8c288",
         },
-        danger: {
-          bg: "#fcebeb",
-          text: "#791f1f",
-          border: "#e8a3a3",
+
+        // Conferido — confirmado, recuperável
+        visto: {
+          DEFAULT: "#2f6b4f",
+          fraca: "#e8f1ea",
+          fio: "#9cbfa9",
         },
       },
+
       fontFamily: {
-        sans: [
-          "-apple-system",
-          "BlinkMacSystemFont",
-          "Segoe UI",
-          "Helvetica",
-          "Arial",
-          "sans-serif",
-        ],
+        // Serifada nos títulos, como as publicações oficiais.
+        serifa: ["var(--fonte-serifa)", "Georgia", "Times New Roman", "serif"],
+        // Sans institucional, sem cara de landing page genérica.
+        sans: ["var(--fonte-sans)", "Segoe UI", "Helvetica", "Arial", "sans-serif"],
+        // Códigos NCM, alíquotas e valores.
+        mono: ["var(--fonte-mono)", "Consolas", "monospace"],
       },
+
+      borderRadius: {
+        // Cantos discretos: documento, não pílula.
+        none: "0",
+        sm: "2px",
+        DEFAULT: "3px",
+        md: "4px",
+        lg: "5px",
+        xl: "6px",
+      },
+
       boxShadow: {
-        card: "0 1px 2px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.04)",
+        // Sombras quase inexistentes — a hierarquia vem dos fios.
+        // Nomes que NÃO colidem com nomes de cor: `shadow-folha` seria lido
+        // como cor-de-sombra, não como a sombra em si.
+        sutil: "0 1px 0 rgba(28,25,23,0.04)",
+        elevada: "0 1px 2px rgba(28,25,23,0.06), 0 8px 24px rgba(28,25,23,0.06)",
+      },
+
+      letterSpacing: {
+        rotulo: "0.09em",
+      },
+
+      fontSize: {
+        rotulo: ["10.5px", { lineHeight: "1.4", letterSpacing: "0.09em" }],
       },
     },
   },

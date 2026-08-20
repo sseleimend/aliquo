@@ -1,5 +1,5 @@
 import PDFDocument from "pdfkit";
-import { formatBRL, formatData, formatMoeda, formatPct } from "@/lib/format";
+import { formatBRL, formatData, formatMoeda, formatPct, formatTaxa } from "@/lib/format";
 import { formatarNcm } from "@/lib/ncm/codigo";
 import type { ExportPayload } from "@/lib/export/types";
 import { montarPayloadPdf } from "@/lib/migracao/payload";
@@ -104,7 +104,7 @@ export async function gerarPdf({
     kv("Regime tributário", resultado.regime.replace(/_/g, " "));
     kv(
       "Câmbio aplicado",
-      `1 ${resultado.moeda} = ${formatBRL(resultado.taxaCambio)}` +
+      `1 ${resultado.moeda} = ${formatTaxa(resultado.taxaCambio)}` +
         (resultado.fx?.fonte ? `  ·  ${resultado.fx.fonte}` : "") +
         (resultado.fx?.stale ? "  ·  COTAÇÃO DESATUALIZADA" : ""),
     );
@@ -213,6 +213,18 @@ export async function gerarPdf({
       doc.text(
         "Créditos: " +
           resultado.creditosRecuperaveis.map((c) => `${c.rotulo} ${formatBRL(c.valor)}`).join(" · "),
+        { width: contentW },
+      );
+      // O PDF é o documento que circula. A premissa do custo efetivo precisa
+      // viajar com ele: crédito só reduz custo se houver saída tributada para
+      // abater, e importador que revende para outro estado (4%, Res. Senado
+      // 13/2012) acumula em vez de aproveitar.
+      doc.moveDown(0.2);
+      doc.text(
+        "O custo efetivo assume aproveitamento integral dos créditos. Quem exporta, vende com " +
+          "isenção ou revende para outro estado (4% de ICMS interestadual para mercadoria " +
+          "importada, Resolução do Senado 13/2012) acumula saldo credor em vez de reduzir " +
+          "custo — nesse caso o desembolso real é o custo total de nacionalização.",
         { width: contentW },
       );
     }

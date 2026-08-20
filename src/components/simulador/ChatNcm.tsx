@@ -110,7 +110,7 @@ export function ChatNcm({
           value={descricao}
           onChange={(e) => onDescricaoChange(e.target.value)}
         />
-        <p className="mt-1 text-xs text-muted">
+        <p className="mt-1 text-xs text-fraco">
           Inclua material, função e características técnicas (potência, capacidade, dimensões) —
           é o que separa uma NCM da outra.
         </p>
@@ -126,13 +126,13 @@ export function ChatNcm({
       </button>
 
       {erro && (
-        <div className="rounded-lg border border-danger-border bg-danger-bg px-3 py-2 text-sm text-danger-text">
+        <div className="aviso-carimbo">
           {erro}
         </div>
       )}
 
       {resposta?.reformulacao && (
-        <p className="text-sm text-muted">
+        <p className="text-sm text-fraco">
           <span aria-hidden>🔎</span> {resposta.reformulacao}
         </p>
       )}
@@ -140,7 +140,7 @@ export function ChatNcm({
       {resposta?.avisos.map((a) => (
         <div
           key={a}
-          className="rounded-lg border border-warn-border bg-warn-bg px-3 py-2 text-xs text-warn-text"
+          className="aviso-nota text-[12px]"
         >
           {a}
         </div>
@@ -148,9 +148,9 @@ export function ChatNcm({
 
       {/* RF-A2 — desambiguação por atributo, com o texto oficial como opção */}
       {resposta?.proximaPergunta && (
-        <div className="card p-4">
-          <p className="text-sm font-semibold text-ink">{resposta.proximaPergunta.texto}</p>
-          <p className="mt-1 text-xs text-muted">
+        <div className="painel px-4 py-4">
+          <p className="text-sm font-semibold text-tinta">{resposta.proximaPergunta.texto}</p>
+          <p className="mt-1 text-xs text-fraco">
             As opções abaixo são o texto oficial que diferencia as classificações.
           </p>
           <div className="mt-3 space-y-2">
@@ -160,7 +160,7 @@ export function ChatNcm({
                 type="button"
                 disabled={carregando}
                 onClick={() => responder(o, resposta.proximaPergunta!.atributo)}
-                className="w-full rounded-lg border border-line bg-white px-3 py-2 text-left text-sm text-ink transition hover:border-accent-border hover:bg-accent-bg"
+                className="w-full rounded-lg border border-fio bg-folha px-3 py-2 text-left text-sm text-tinta transition hover:border-caneta-fio hover:bg-caneta-fraca"
               >
                 {o.rotulo}
               </button>
@@ -171,7 +171,7 @@ export function ChatNcm({
 
       {candidatos.length > 0 && (
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-ink">
+          <p className="text-sm font-semibold text-tinta">
             {candidatos.length} classificação(ões) da base oficial
           </p>
           {candidatos.map((c) => (
@@ -188,7 +188,7 @@ export function ChatNcm({
             />
           ))}
 
-          <p className="pt-1 text-xs text-muted">{resposta?.disclaimer}</p>
+          <p className="pt-1 text-xs text-fraco">{resposta?.disclaimer}</p>
 
           <button
             type="button"
@@ -202,7 +202,7 @@ export function ChatNcm({
       )}
 
       {resposta && candidatos.length === 0 && !resposta.proximaPergunta && (
-        <div className="rounded-lg border border-warn-border bg-warn-bg px-3 py-2 text-sm text-warn-text">
+        <div className="aviso-nota">
           Nenhuma classificação oficial correspondeu. Detalhe mais o produto ou informe a NCM
           diretamente na aba ao lado.
         </div>

@@ -33,18 +33,18 @@ export function AcoesImportacao({ id }: { id: string }) {
   }
 
   return (
-    <div className="flex items-center justify-end gap-2 whitespace-nowrap">
-      <a className="text-accent-text hover:underline" href={`/api/export/pdf?id=${id}`}>
+    <div className="flex items-center justify-end gap-2 whitespace-nowrap text-[12.5px]">
+      <a className="text-caneta hover:underline" href={`/api/export/pdf?id=${id}`}>
         PDF
       </a>
-      <span className="text-line">·</span>
-      <a className="text-accent-text hover:underline" href={`/api/export/excel?id=${id}`}>
+      <span className="text-fio2">·</span>
+      <a className="text-caneta hover:underline" href={`/api/export/excel?id=${id}`}>
         Excel
       </a>
-      <span className="text-line">·</span>
+      <span className="text-fio2">·</span>
       <button
         type="button"
-        className="text-accent-text hover:underline disabled:opacity-50"
+        className="text-caneta hover:underline disabled:opacity-40"
         disabled={ocupado !== null}
         onClick={() => {
           setOcupado("duplicar");
@@ -53,16 +53,16 @@ export function AcoesImportacao({ id }: { id: string }) {
       >
         {ocupado === "duplicar" ? "Abrindo…" : "Usar como base"}
       </button>
-      <span className="text-line">·</span>
+      <span className="text-fio2">·</span>
       <button
         type="button"
-        className="text-danger-text hover:underline disabled:opacity-50"
+        className="text-carimbo hover:underline disabled:opacity-40"
         disabled={ocupado !== null}
         onClick={remover}
       >
         {ocupado === "remover" ? "…" : "Remover"}
       </button>
-      {erro && <span className="ml-2 text-xs text-danger-text">{erro}</span>}
+      {erro && <span className="ml-2 text-[11px] text-carimbo">{erro}</span>}
     </div>
   );
 }

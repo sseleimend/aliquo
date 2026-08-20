@@ -42,6 +42,10 @@ export async function carregarDeDuplicata(
         regimeTributario: r.regimeTributario,
         invoiceId: r.invoiceId ?? null,
         criterioRateio: r.criterioRateio ?? "valor",
+        icmsRegimeEspecial: r.icms?.manual != null,
+        icmsAliquotaManual: r.icms?.manual != null ? String(r.icms.manual * 100) : "",
+        icmsObservacao: r.icms?.observacao ?? "",
+        icmsFecpAplicavel: r.icms?.fecpAplicavel ?? null,
         itens: (r.itens ?? []).map((i: Record<string, unknown>) =>
           novoItem({
             ncm: String(i.ncm ?? ""),

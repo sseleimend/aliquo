@@ -79,34 +79,34 @@ export function RegisterForm() {
           minLength={6}
           required
         />
-        <p className="mt-1 text-xs text-muted">Mínimo de 6 caracteres.</p>
+        <p className="mt-1 text-xs text-fraco">Mínimo de 6 caracteres.</p>
       </div>
 
       <SeletorPlano valor={plano} onChange={setPlano} />
 
-      <p className="text-xs text-muted">
+      <p className="text-xs text-fraco">
         Ao criar a conta você concorda com os{" "}
-        <Link href="/termos" className="text-accent-text hover:underline">
+        <Link href="/termos" className="text-caneta hover:underline">
           termos de uso
         </Link>{" "}
         e a{" "}
-        <Link href="/privacidade" className="text-accent-text hover:underline">
+        <Link href="/privacidade" className="text-caneta hover:underline">
           política de privacidade
         </Link>
         .
       </p>
 
       {erro ? (
-        <p className="rounded-md bg-danger-bg px-3 py-2 text-sm text-danger-text">{erro}</p>
+        <p className="rounded-md bg-carimbo-fraca px-3 py-2 text-sm text-carimbo">{erro}</p>
       ) : null}
 
       <button type="submit" className="btn-primary w-full" disabled={loading}>
         {loading ? "Criando conta…" : "Criar conta"}
       </button>
 
-      <p className="text-center text-sm text-ink2">
+      <p className="text-center text-sm text-tinta2">
         Já tem conta?{" "}
-        <Link href="/login" className="font-medium text-accent-text hover:underline">
+        <Link href="/login" className="font-medium text-caneta hover:underline">
           Entrar
         </Link>
       </p>

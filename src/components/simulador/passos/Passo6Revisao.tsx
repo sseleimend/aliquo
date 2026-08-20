@@ -11,7 +11,7 @@ export function Passo6Revisao() {
 
   if (!estado.resultado) {
     return (
-      <div className="rounded-lg border border-line bg-page px-4 py-6 text-center text-sm text-muted">
+      <div className="rounded border border-fio bg-papel2 px-4 py-8 text-center text-[13px] text-fraco">
         Nada calculado ainda. Volte e clique em “Calcular custo total”.
       </div>
     );
@@ -47,7 +47,7 @@ export function Passo6Revisao() {
         </button>
       </div>
 
-      <p className="text-xs text-muted">
+      <p className="text-xs text-fraco">
         Esta simulação foi salva no seu histórico com as alíquotas, o câmbio e a versão das regras
         usadas — você pode reabri-la e duplicá-la depois.
       </p>

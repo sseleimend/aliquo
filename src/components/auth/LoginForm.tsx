@@ -63,7 +63,7 @@ export function LoginForm({
         </div>
 
         {erro ? (
-          <p className="rounded-md bg-danger-bg px-3 py-2 text-sm text-danger-text">{erro}</p>
+          <p className="rounded-md bg-carimbo-fraca px-3 py-2 text-sm text-carimbo">{erro}</p>
         ) : null}
 
         <button type="submit" className="btn-primary w-full" disabled={loading}>
@@ -73,8 +73,8 @@ export function LoginForm({
 
       {googleEnabled ? (
         <>
-          <div className="flex items-center gap-3 text-xs text-muted">
-            <span className="h-px flex-1 bg-line" /> ou <span className="h-px flex-1 bg-line" />
+          <div className="flex items-center gap-3 text-xs text-fraco">
+            <span className="h-px flex-1 bg-fio" /> ou <span className="h-px flex-1 bg-fio" />
           </div>
           <button
             onClick={() => signIn("google", { callbackUrl })}
@@ -84,14 +84,14 @@ export function LoginForm({
           </button>
         </>
       ) : (
-        <p className="text-center text-xs text-muted">
+        <p className="text-center text-xs text-fraco">
           Login com Google desativado (configure AUTH_GOOGLE_ID/SECRET no .env).
         </p>
       )}
 
-      <p className="text-center text-sm text-ink2">
+      <p className="text-center text-sm text-tinta2">
         Não tem conta?{" "}
-        <Link href="/cadastro" className="font-medium text-accent-text hover:underline">
+        <Link href="/cadastro" className="font-medium text-caneta hover:underline">
           Criar conta
         </Link>
       </p>
