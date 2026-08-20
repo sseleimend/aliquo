@@ -20,8 +20,14 @@ export default async function HistoricoPage() {
       })
     : [];
 
-  const total = importacoes.reduce((s, i) => s + i.landedCost, 0);
-  const provisorias = importacoes.filter((i) => i.provisorio).length;
+  // O número grande tem que ser defensável. Simulação provisória está faltando
+  // alíquota oficial — somá-la aqui produziria um acumulado que ninguém
+  // consegue justificar, com o aviso a dois palmos de distância. Fica de fora,
+  // e o que ficou de fora é dito em vez de sumir.
+  const conferidas = importacoes.filter((i) => !i.provisorio);
+  const provisorias = importacoes.filter((i) => i.provisorio);
+  const total = conferidas.reduce((s, i) => s + i.landedCost, 0);
+  const totalProvisorio = provisorias.reduce((s, i) => s + i.landedCost, 0);
 
   return (
     <>
@@ -39,12 +45,20 @@ export default async function HistoricoPage() {
       {importacoes.length > 0 && (
         <div className="mb-6 grid gap-px overflow-hidden rounded border border-fio bg-fio sm:grid-cols-3">
           <Resumo rotulo="Importações" valor={String(importacoes.length)} />
-          <Resumo rotulo="Custo acumulado" valor={formatBRL(total)} />
+          <Resumo
+            rotulo="Custo acumulado"
+            valor={formatBRL(total)}
+            nota={
+              provisorias.length > 0
+                ? `só as conferidas · ${formatBRL(totalProvisorio)} em provisórias fora da conta`
+                : `${conferidas.length} ${conferidas.length === 1 ? "importação" : "importações"}`
+            }
+          />
           <Resumo
             rotulo="Provisórias"
-            valor={String(provisorias)}
-            alerta={provisorias > 0}
-            nota={provisorias > 0 ? "faltam alíquotas oficiais" : "todas conferidas"}
+            valor={String(provisorias.length)}
+            alerta={provisorias.length > 0}
+            nota={provisorias.length > 0 ? "faltam alíquotas oficiais" : "todas conferidas"}
           />
         </div>
       )}
