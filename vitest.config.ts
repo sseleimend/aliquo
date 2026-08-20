@@ -9,6 +9,8 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // Roda antes de qualquer import: impede a suíte de escrever em produção.
+    setupFiles: ["./vitest.setup.ts"],
     include: ["src/**/*.test.ts"],
   },
 });

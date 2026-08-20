@@ -10,6 +10,20 @@
  */
 
 import { prisma } from "@/lib/db";
+
+/**
+ * Cliente de banco: o global, ou o de uma transação.
+ *
+ * A distinção é vital com o driver libSQL. Dentro de uma transação
+ * interativa, uma consulta feita pelo cliente GLOBAL fica na fila esperando
+ * a conexão que a transação segura — e a transação espera a consulta. O
+ * impasse só se resolve pelo timeout, e o sintoma engana: o erro aponta o
+ * primeiro statement DEPOIS da leitura, como se ele fosse o lento.
+ *
+ * Regra: quem recebe `tx` usa `tx` para TUDO, leitura inclusive.
+ */
+type ClienteDb = typeof prisma | Prisma.TransactionClient;
+import type { Prisma } from "@prisma/client";
 import { custoUsdDaChamada, precoDe, usdParaCentavosBrl } from "@/lib/llm/custo";
 
 export type TipoUso = "simulacao" | "ncm_chat" | "export_pdf" | "invoice_upload";
@@ -84,8 +98,8 @@ export interface PlanoAtivo {
  * (banco não semeado), usa os limites padrão — nunca bloqueia por acidente
  * de configuração.
  */
-export async function planoDoUsuario(userId: string): Promise<PlanoAtivo> {
-  const assinatura = await prisma.assinatura.findUnique({
+export async function planoDoUsuario(userId: string, db: ClienteDb = prisma): Promise<PlanoAtivo> {
+  const assinatura = await db.assinatura.findUnique({
     where: { userId },
     include: { plano: true },
   });
@@ -98,7 +112,7 @@ export async function planoDoUsuario(userId: string): Promise<PlanoAtivo> {
     };
   }
 
-  const free = await prisma.plano.findUnique({ where: { codigo: "free" } });
+  const free = await db.plano.findUnique({ where: { codigo: "free" } });
   if (free) {
     return { codigo: free.codigo, nome: free.nome, limites: parseLimites(free.limitesJson) };
   }
@@ -113,12 +127,16 @@ export interface StatusCota {
   plano: string;
 }
 
-export async function checarCota(userId: string, tipo: TipoUso): Promise<StatusCota> {
-  const plano = await planoDoUsuario(userId);
+export async function checarCota(
+  userId: string,
+  tipo: TipoUso,
+  db: ClienteDb = prisma,
+): Promise<StatusCota> {
+  const plano = await planoDoUsuario(userId, db);
   const chave = CHAVE_LIMITE[tipo];
   const limite = chave ? (plano.limites[chave] as number) : 0;
 
-  const registro = await prisma.usoMensal.findUnique({
+  const registro = await db.usoMensal.findUnique({
     where: { userId_competencia_tipo: { userId, competencia: competenciaAtual(), tipo } },
   });
   const usado = registro?.total ?? 0;
@@ -140,9 +158,11 @@ export async function checarCota(userId: string, tipo: TipoUso): Promise<StatusC
 export async function consumirCota(
   userId: string,
   tipo: TipoUso,
-  tx: { usoMensal: typeof prisma.usoMensal } = prisma,
+  tx: ClienteDb = prisma,
 ): Promise<void> {
-  const status = await checarCota(userId, tipo);
+  // `tx`, e não `prisma`: ler pelo cliente global aqui dentro trava a
+  // transação de quem chamou. Ver ClienteDb no topo do arquivo.
+  const status = await checarCota(userId, tipo, tx);
   if (!status.permitido) {
     throw new QuotaExcedidaError(tipo, status.limite, status.usado, status.plano);
   }
@@ -156,16 +176,20 @@ export async function consumirCota(
 }
 
 /** Garante que um recurso booleano do plano está liberado. */
-export async function exigirRecurso(userId: string, recurso: "exportPdf" | "invoiceUpload") {
-  const plano = await planoDoUsuario(userId);
+export async function exigirRecurso(
+  userId: string,
+  recurso: "exportPdf" | "invoiceUpload",
+  db: ClienteDb = prisma,
+) {
+  const plano = await planoDoUsuario(userId, db);
   if (!plano.limites[recurso]) {
     throw new RecursoIndisponivelError(recurso, plano.codigo);
   }
 }
 
 /** Teto de itens por importação no plano (RF-D1 tem limite por tier). */
-export async function limiteDeItens(userId: string): Promise<number> {
-  const plano = await planoDoUsuario(userId);
+export async function limiteDeItens(userId: string, db: ClienteDb = prisma): Promise<number> {
+  const plano = await planoDoUsuario(userId, db);
   return plano.limites.itensPorImportacao;
 }
 

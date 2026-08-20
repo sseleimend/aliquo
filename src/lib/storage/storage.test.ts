@@ -1,6 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   ArquivoInvalidoError,
+  dbFileStore,
+  getFileStore,
   localFileStore,
   montarChave,
   sha256,
@@ -51,5 +53,41 @@ describe("hash de conteúdo", () => {
     expect(a).toBe(sha256(Buffer.from("fatura")));
     expect(a).not.toBe(sha256(Buffer.from("fatura ")));
     expect(a).toHaveLength(64);
+  });
+});
+
+describe("escolha do backend de armazenamento", () => {
+  const original = {
+    turso: process.env.TURSO_DATABASE_URL,
+    driver: process.env.STORAGE_DRIVER,
+  };
+
+  function ambiente(turso?: string, driver?: string) {
+    if (turso === undefined) delete process.env.TURSO_DATABASE_URL;
+    else process.env.TURSO_DATABASE_URL = turso;
+    if (driver === undefined) delete process.env.STORAGE_DRIVER;
+    else process.env.STORAGE_DRIVER = driver;
+  }
+
+  afterEach(() => ambiente(original.turso, original.driver));
+
+  it("grava em disco quando o banco é o arquivo local", () => {
+    ambiente(undefined, undefined);
+    expect(getFileStore()).toBe(localFileStore);
+  });
+
+  // O caso que motiva o teste: em host sem disco persistente, cair no backend
+  // local significaria aceitar o upload e perdê-lo no próximo deploy.
+  it("grava no banco quando o banco é remoto", () => {
+    ambiente("libsql://exemplo.turso.io", undefined);
+    expect(getFileStore()).toBe(dbFileStore);
+  });
+
+  it("STORAGE_DRIVER tem a palavra final nos dois sentidos", () => {
+    ambiente("libsql://exemplo.turso.io", "local");
+    expect(getFileStore()).toBe(localFileStore);
+
+    ambiente(undefined, "db");
+    expect(getFileStore()).toBe(dbFileStore);
   });
 });

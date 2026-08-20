@@ -9,6 +9,7 @@
  */
 
 import { writeFile } from "node:fs/promises";
+import "./lib/env";
 import { prisma } from "../src/lib/db";
 import { descobrirNcm } from "../src/lib/ncm/classifier";
 import { getCotacao } from "../src/lib/fx";
@@ -135,8 +136,16 @@ async function main() {
   for (const a of resultado.avisos) console.log(`AVISO: ${a}`);
 
   titulo("5. PERSISTÊNCIA (RF-D3)");
-  const user = await prisma.user.findFirst({ where: { email: "demo@aliquo.com" } });
-  if (!user) throw new Error("Usuário demo não encontrado — rode `npm run db:seed`.");
+  // E2E_EMAIL permite rodar contra um ambiente sem a conta demo — um banco de
+  // produção recém-criado, por exemplo, onde criar demo@aliquo.com com senha
+  // conhecida seria abrir uma porta.
+  const email = process.env.E2E_EMAIL || "demo@aliquo.com";
+  const user = await prisma.user.findFirst({ where: { email } });
+  if (!user) {
+    throw new Error(
+      `Usuário ${email} não encontrado. Rode "npm run db:seed" ou aponte E2E_EMAIL para uma conta existente.`,
+    );
+  }
 
   const salvo = await prisma.importacao.create({
     data: {

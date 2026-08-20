@@ -3,6 +3,7 @@
  * o round-trip do próprio PDF exportado.
  */
 import ExcelJS from "exceljs";
+import "./lib/env";
 import { prisma } from "../src/lib/db";
 import { ABA_DADOS, COLUNAS, gerarTemplate, lerPlanilha } from "../src/lib/migracao/template";
 import { importarEmbarques } from "../src/lib/migracao/importar";

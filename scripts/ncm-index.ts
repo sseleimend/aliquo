@@ -9,11 +9,12 @@
  * Uso: npm run ncm:index
  */
 
-import { PrismaClient } from "@prisma/client";
+import "./lib/env";
+import { criarPrismaClient } from "../src/lib/db";
 import { SINONIMOS } from "./data/sinonimos";
 import { normalizarTexto } from "../src/lib/ncm/codigo";
 
-const prisma = new PrismaClient();
+const prisma = criarPrismaClient();
 
 const DDL = `
 CREATE VIRTUAL TABLE "NcmFts" USING fts5(

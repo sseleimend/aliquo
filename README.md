@@ -156,6 +156,20 @@ Remova essa linha do SQL gerado e rode `npm run ncm:index` para reconstruir
 (leva segundos). Em runtime, se o índice sumir, a busca degrada para `LIKE`
 com aviso visível em vez de quebrar.
 
+## Publicação
+
+Produção roda no **Render** (plano free) com o banco no **Turso** — libSQL, o
+mesmo dialeto SQLite, FTS5 e `bm25()` inclusive. O motivo é duro: nenhuma cloud
+gratuita oferece disco persistente, então banco e anexos precisam sair do
+container antes de o primeiro restart apagá-los.
+
+A troca é por variável de ambiente, não por código: com `TURSO_DATABASE_URL`
+definida, o Prisma passa a usar o driver adapter libSQL e o `FileStore` grava os
+bytes das faturas na tabela `ArquivoBlob` em vez de `var/uploads/`.
+
+Passo a passo — incluindo a conferência do FTS5 remoto, que é o que sustenta a
+escolha — em [docs/deploy.md](docs/deploy.md).
+
 ## Scripts
 
 | Comando | O que faz |
@@ -168,11 +182,15 @@ com aviso visível em vez de quebrar.
 | `npm run custo:ia [AAAA-MM]` | custo de IA por simulação e margem do plano |
 | `npm run verificar:migracao` | template, importação por planilha e round-trip do PDF |
 | `npx tsx scripts/reset-teste.ts` | zera dados de aplicação e cria conta Pro de teste |
+| `npm run producao:preparar` | gera `var/producao.db` limpo, pronto para o Turso |
+| `npx tsx scripts/publicar-banco.ts` | carrega `var/producao.db` para dentro do Turso |
+| `npx tsx scripts/verificar-banco.ts` | confere base, FTS5 e BLOB no banco em uso (local ou Turso) |
+| `npx tsx scripts/verificar-llm.ts` | confere que o provider de IA configurado responde |
 
 ## Stack
 
-Next.js 15 (App Router) · TypeScript · Tailwind · Prisma + SQLite (FTS5) ·
-Auth.js · Vitest · pdfkit · exceljs.
+Next.js 15 (App Router) · TypeScript · Tailwind · Prisma + SQLite (FTS5),
+servido pelo Turso em produção · Auth.js · Vitest · pdfkit · exceljs.
 
 Provider de IA configurável por `LLM_PROVIDER` (`mock` | `ollama` | `anthropic`
 | `gemini`). Com `mock` não há chamada de rede e a classificação usa apenas a

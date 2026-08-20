@@ -152,7 +152,7 @@ export async function POST(req: Request) {
   if (dados) {
     const chave = montarChave(userId, invoice.id, ext);
     try {
-      await getFileStore().put(chave, dados);
+      await getFileStore().put(chave, dados, arquivo?.type);
       await prisma.invoice.update({ where: { id: invoice.id }, data: { arquivoKey: chave } });
     } catch {
       // Sem o arquivo a invoice ainda é útil pelos itens; não perdemos o registro.

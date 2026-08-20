@@ -478,3 +478,17 @@ model AuditLog {
 
   @@index([userId])
 }
+
+// Bytes dos arquivos enviados pelo usuário (RF-D2).
+//
+// Mora no banco porque o alvo de deploy não tem disco persistente: em serviço
+// free, o sistema de arquivos volta ao estado da imagem a cada restart. O
+// metadado do arquivo continua em `Invoice`; aqui ficam só os bytes, buscados
+// pela mesma chave (`Invoice.arquivoKey`).
+model ArquivoBlob {
+  chave    String   @id
+  mime     String
+  tamanho  Int
+  dados    Bytes
+  criadoEm DateTime @default(now())
+}

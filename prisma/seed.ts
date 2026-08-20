@@ -1,8 +1,9 @@
-import { PrismaClient } from "@prisma/client";
+import "../scripts/lib/env";
+import { criarPrismaClient } from "../src/lib/db";
 import bcrypt from "bcryptjs";
 import { ICMS_POR_UF } from "../src/lib/tax/rates";
 
-const prisma = new PrismaClient();
+const prisma = criarPrismaClient();
 
 const PLANOS = [
   {

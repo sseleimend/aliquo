@@ -10,6 +10,7 @@
 
 import { recuperarCandidatos } from "../src/lib/ncm/retrieval";
 import { CASOS } from "./data/casos-classificacao";
+import "./lib/env";
 import { prisma } from "../src/lib/db";
 
 interface Linha {

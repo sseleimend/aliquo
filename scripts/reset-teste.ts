@@ -10,15 +10,26 @@
 
 import { rm } from "node:fs/promises";
 import path from "node:path";
-import { PrismaClient } from "@prisma/client";
+import "./lib/env";
+import { bancoRemoto, criarPrismaClient } from "../src/lib/db";
 import bcrypt from "bcryptjs";
 
-const prisma = new PrismaClient();
+const prisma = criarPrismaClient();
 
 const EMAIL = "teste@aliquo.com";
 const SENHA = "teste-fase2";
 
 async function main() {
+  // Este script começa apagando TUDO que é dado de usuário. Contra o banco
+  // remoto isso não é reset de teste, é perda de produção.
+  if (bancoRemoto() && !process.argv.includes("--forcar")) {
+    throw new Error(
+      "O banco em uso é o REMOTO (TURSO_DATABASE_URL definida) e este script apaga " +
+        "todos os dados de aplicação. Rode sem essa variável, ou passe --forcar se " +
+        "for exatamente isso que você quer.",
+    );
+  }
+
   console.log("== Limpeza dos dados de aplicação ==");
 
   // Ordem importa: filhos antes dos pais.
