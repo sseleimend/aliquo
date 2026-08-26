@@ -27,7 +27,11 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      # "npm ci" recusa completar dependência opcional nativa (libsql) que o
+      # lockfile, gerado no Windows, não resolveu pro binário linux-x64-gnu.
+      # "npm install" busca isso na hora a partir do optionalDependencies do
+      # pacote — troca reprodutibilidade estrita por robustez cross-platform.
+      - run: npm install
       - run: npx prisma generate --schema=apps/simulador/prisma/schema.prisma
       - run: npm run typecheck --workspaces --if-present
 
@@ -40,7 +44,11 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      # "npm ci" recusa completar dependência opcional nativa (libsql) que o
+      # lockfile, gerado no Windows, não resolveu pro binário linux-x64-gnu.
+      # "npm install" busca isso na hora a partir do optionalDependencies do
+      # pacote — troca reprodutibilidade estrita por robustez cross-platform.
+      - run: npm install
       - run: npx prisma generate --schema=apps/simulador/prisma/schema.prisma
       - run: npx prisma migrate deploy --schema=apps/simulador/prisma/schema.prisma
       - run: npm run test --workspaces --if-present
@@ -59,7 +67,11 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      # "npm ci" recusa completar dependência opcional nativa (libsql) que o
+      # lockfile, gerado no Windows, não resolveu pro binário linux-x64-gnu.
+      # "npm install" busca isso na hora a partir do optionalDependencies do
+      # pacote — troca reprodutibilidade estrita por robustez cross-platform.
+      - run: npm install
       - run: npx prisma generate --schema=apps/simulador/prisma/schema.prisma
       - run: npx prisma migrate deploy --schema=apps/simulador/prisma/schema.prisma
       - run: npm run build --workspaces --if-present
