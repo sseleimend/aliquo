@@ -28,6 +28,7 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - run: npx prisma generate --schema=apps/simulador/prisma/schema.prisma
       - run: npm run typecheck --workspaces --if-present
 
   test:
@@ -40,6 +41,7 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - run: npx prisma generate --schema=apps/simulador/prisma/schema.prisma
       - run: npx prisma migrate deploy --schema=apps/simulador/prisma/schema.prisma
       - run: npm run test --workspaces --if-present
         # Alguns testes de apps/simulador dependem da base oficial (NCM/TEC/
@@ -58,5 +60,6 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - run: npx prisma generate --schema=apps/simulador/prisma/schema.prisma
       - run: npx prisma migrate deploy --schema=apps/simulador/prisma/schema.prisma
       - run: npm run build --workspaces --if-present
