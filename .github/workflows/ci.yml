@@ -11,6 +11,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
+  # Usadas só por apps/simulador (Prisma/Next) — inofensivas para outros
+  # workspaces (ex.: apps/landing) que ainda não as leem.
   DATABASE_URL: "file:./ci.db"
   AUTH_SECRET: "ci-somente-para-build-e-teste"
   STORAGE_DRIVER: "db"
@@ -25,8 +27,13 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
-      - run: npx tsc --noEmit
+      # "npm ci" recusa completar dependência opcional nativa (libsql) que o
+      # lockfile, gerado no Windows, não resolveu pro binário linux-x64-gnu.
+      # "npm install" busca isso na hora a partir do optionalDependencies do
+      # pacote — troca reprodutibilidade estrita por robustez cross-platform.
+      - run: npm install
+      - run: npx prisma generate --schema=apps/simulador/prisma/schema.prisma
+      - run: npm run typecheck --workspaces --if-present
 
   test:
     name: test
@@ -37,13 +44,18 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
-      - run: npx prisma migrate deploy
-      - run: npx vitest run
-        # Alguns testes dependem da base oficial (NCM/TEC/TIPI, ver
-        # `npm run base:import`) importada em var/base/, que é local e não
-        # versionada (.gitignore) — falham aqui até esse cache existir no
-        # runner. Não bloqueia a PR por enquanto; ver README para importar.
+      # "npm ci" recusa completar dependência opcional nativa (libsql) que o
+      # lockfile, gerado no Windows, não resolveu pro binário linux-x64-gnu.
+      # "npm install" busca isso na hora a partir do optionalDependencies do
+      # pacote — troca reprodutibilidade estrita por robustez cross-platform.
+      - run: npm install
+      - run: npx prisma generate --schema=apps/simulador/prisma/schema.prisma
+      - run: npx prisma migrate deploy --schema=apps/simulador/prisma/schema.prisma
+      - run: npm run test --workspaces --if-present
+        # Alguns testes de apps/simulador dependem da base oficial (NCM/TEC/
+        # TIPI, ver `npm run base:import`) importada em var/base/, que é
+        # local e não versionada (.gitignore) — falham aqui até esse cache
+        # existir no runner. Não bloqueia a PR por enquanto; ver README.
         continue-on-error: true
 
   build:
@@ -55,6 +67,11 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
-      - run: npx prisma migrate deploy
-      - run: npx next build
+      # "npm ci" recusa completar dependência opcional nativa (libsql) que o
+      # lockfile, gerado no Windows, não resolveu pro binário linux-x64-gnu.
+      # "npm install" busca isso na hora a partir do optionalDependencies do
+      # pacote — troca reprodutibilidade estrita por robustez cross-platform.
+      - run: npm install
+      - run: npx prisma generate --schema=apps/simulador/prisma/schema.prisma
+      - run: npx prisma migrate deploy --schema=apps/simulador/prisma/schema.prisma
+      - run: npm run build --workspaces --if-present
