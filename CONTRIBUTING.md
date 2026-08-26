@@ -1,0 +1,47 @@
+# Contribuindo
+
+## Fluxo de branches
+
+```
+feature/* , fix/* , chore/* ...
+        │
+        ▼
+     homolog   (QA — recebe qualquer branch, exceto main)
+        │
+        ▼
+       main    (produção — só recebe merge vindo de homolog)
+```
+
+- **`main`** é protegida: só aceita PR com origem em `homolog`, exige os
+  checks de CI (`typecheck`, `fluxo-branches`, `commitlint`) verdes, e só é
+  mesclada por aprovação do dono do repositório (único CODEOWNER).
+- **`homolog`** é a branch de QA: recebe PR de qualquer branch de trabalho,
+  mas nunca de `main` — o workflow `fluxo-branches` rejeita essa direção.
+- Branches de trabalho saem de `homolog` (ou de `main`, se `homolog` já
+  estiver com algo pendente) e seguem o padrão `tipo/descricao-curta`
+  (`feat/…`, `fix/…`, `refactor/…`, `chore/…`, `docs/…`, `test/…`).
+
+## Commits
+
+[Conventional Commits](https://www.conventionalcommits.org/pt-br/), em
+commits atômicos (um assunto lógico por commit). Validado automaticamente
+pelo hook `commit-msg` (commitlint) e, na PR, pelo workflow `commitlint`.
+
+Exemplos: `feat(simulador): …`, `fix(historico): …`, `refactor(tax): …`,
+`chore(hooks): …`, `docs: …`, `test: …`.
+
+## Antes de abrir a PR
+
+```bash
+npx tsc --noEmit
+npm test
+```
+
+O hook de `pre-commit` (husky + lint-staged) já roda o typecheck a cada
+commit que toca `.ts`/`.tsx`.
+
+## Pull requests
+
+Abra a PR para `homolog` (nunca direto para `main`). Preencha o template —
+o que muda, como testar, checklist. Os checks de CI e o CODEOWNER
+(`[CODEOWNERS](CODEOWNERS)`) precisam aprovar antes do merge.
