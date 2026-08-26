@@ -167,9 +167,6 @@ A troca é por variável de ambiente, não por código: com `TURSO_DATABASE_URL`
 definida, o Prisma passa a usar o driver adapter libSQL e o `FileStore` grava os
 bytes das faturas na tabela `ArquivoBlob` em vez de `var/uploads/`.
 
-Passo a passo — incluindo a conferência do FTS5 remoto, que é o que sustenta a
-escolha — em [docs/deploy.md](docs/deploy.md).
-
 ## Scripts
 
 | Comando | O que faz |
@@ -198,8 +195,7 @@ busca na base oficial — degradada, porém correta.
 
 ## Limites conhecidos
 
-Detalhados, com remediação e o que fecharia cada um, em
-[docs/limitacoes.md](docs/limitacoes.md). Em resumo:
+Resumo:
 
 - **ICMS** usa alíquotas gerais estimadas por UF — não existe tabela oficial
   consolidada dos 27 estados. Carregue a real com
