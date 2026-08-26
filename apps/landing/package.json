@@ -1,0 +1,9 @@
+{
+  "name": "landing",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Landing page do Aliquo — reservado, ainda não implementado",
+  "scripts": {
+    "dev": "echo \"apps/landing: ainda não implementado\" && exit 0"
+  }
+}

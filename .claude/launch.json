@@ -6,7 +6,8 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": [
         "run",
-        "dev"
+        "dev",
+        "--workspace=apps/simulador"
       ],
       "port": 3000
     },
@@ -15,9 +16,20 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": [
         "run",
-        "start"
+        "start",
+        "--workspace=apps/simulador"
       ],
       "port": 3000
+    },
+    {
+      "name": "landing-dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--workspace=apps/landing"
+      ],
+      "port": 3001
     }
   ]
 }

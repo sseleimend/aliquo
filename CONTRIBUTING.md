@@ -1,5 +1,12 @@
 # Contribuindo
 
+## Monorepo
+
+`npm workspaces` em `apps/*` — ver [README.md](README.md) pra lista dos
+workspaces. `npm install` sempre na raiz. Scripts de CI/hooks rodam com
+`--workspaces --if-present`, então cada workspace só precisa declarar os
+scripts que fizerem sentido pra ele (`build`, `test`, `typecheck`, `lint`).
+
 ## Fluxo de branches
 
 ```
@@ -13,8 +20,12 @@ feature/* , fix/* , chore/* ...
 ```
 
 - **`main`** é protegida: só aceita PR com origem em `homolog`, exige os
-  checks de CI (`typecheck`, `fluxo-branches`, `commitlint`) verdes, e só é
-  mesclada por aprovação do dono do repositório (único CODEOWNER).
+  checks de CI (`typecheck`, `fluxo-branches`, `commitlint`, `build`) verdes,
+  e exige aprovação do dono do repositório (único CODEOWNER) antes de
+  mesclar — outros colaboradores com acesso de escrita não conseguem
+  aprovar essa PR. Ressalva técnica: GitHub não deixa autor aprovar a
+  própria PR, então o dono tem bypass da exigência de review só quando ele
+  mesmo está mesclando (os outros checks continuam valendo).
 - **`homolog`** é a branch de QA: recebe PR de qualquer branch de trabalho,
   mas nunca de `main` — o workflow `fluxo-branches` rejeita essa direção.
 - Branches de trabalho saem de `homolog` (ou de `main`, se `homolog` já
@@ -33,12 +44,12 @@ Exemplos: `feat(simulador): …`, `fix(historico): …`, `refactor(tax): …`,
 ## Antes de abrir a PR
 
 ```bash
-npx tsc --noEmit
+npm run typecheck --workspaces --if-present
 npm test
 ```
 
-O hook de `pre-commit` (husky + lint-staged) já roda o typecheck a cada
-commit que toca `.ts`/`.tsx`.
+O hook de `pre-commit` (husky + lint-staged) já roda o typecheck de todos os
+workspaces a cada commit que toca `.ts`/`.tsx`.
 
 ## Pull requests
 
