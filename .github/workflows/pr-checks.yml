@@ -1,0 +1,45 @@
+name: PR checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+    branches: [main, homolog]
+
+jobs:
+  fluxo-branches:
+    name: fluxo-branches
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validar origem do merge
+        env:
+          BASE: ${{ github.event.pull_request.base.ref }}
+          HEAD: ${{ github.event.pull_request.head.ref }}
+        run: |
+          echo "PR: $HEAD -> $BASE"
+
+          if [ "$BASE" = "main" ] && [ "$HEAD" != "homolog" ]; then
+            echo "::error::main só recebe merge de homolog (esta PR tenta $HEAD -> main)."
+            exit 1
+          fi
+
+          if [ "$BASE" = "homolog" ] && [ "$HEAD" = "main" ]; then
+            echo "::error::homolog não pode receber merge de main."
+            exit 1
+          fi
+
+          echo "Fluxo de branches ok."
+
+  commitlint:
+    name: commitlint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Validar conventional commits da PR
+        run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
