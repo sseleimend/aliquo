@@ -1,15 +1,15 @@
 # dependencies
-/node_modules
-/.pnp
+node_modules
+.pnp
 .pnp.js
 
 # next.js
-/.next/
-/out/
+.next/
+out/
 next-env.d.ts
 
 # production
-/build
+build
 
 # misc
 .DS_Store
@@ -24,13 +24,13 @@ yarn-error.log*
 .env
 .env*.local
 
-# database (SQLite dev)
-/prisma/dev.db
-/prisma/dev.db-journal
+# database (SQLite dev/local — inclui dev.db, ci.db etc.)
+**/prisma/*.db
+**/prisma/*.db-journal
 
 # typescript
 *.tsbuildinfo
 
 # testing
-/coverage
+coverage
 var/
