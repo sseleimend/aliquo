@@ -19,6 +19,27 @@ feature/* , fix/* , chore/* ...
        main    (produção — só recebe merge vindo de homolog)
 ```
 
+### Quem pode o quê
+
+| Ação | Admin (dono) | Outros contribuidores |
+|---|---|---|
+| Criar branches de trabalho | ✅ | ✅ |
+| Abrir PR de uma branch de trabalho → `homolog` | ✅ | ✅ |
+| Mesclar PR em `homolog` | ✅ | ✅ |
+| Abrir PR `homolog` → `main` | ✅ | ✅ |
+| Mesclar PR `homolog` → `main` | ✅ (com `--admin`, ver abaixo) | ❌ |
+| Abrir PR de outra branch → `main` | ✅¹ | ❌ (fechada automaticamente) |
+| Push direto em `main` | ❌² | ❌ |
+
+¹ Tecnicamente permitido pelo GitHub (dono tem acesso total), mas o
+workflow `fluxo-branches` fecha essa PR do mesmo jeito — a regra é
+estrutural (`main` só nasce de `homolog`), não uma questão de permissão.
+Ninguém, nem o dono, deveria contornar isso na prática.
+
+² Ninguém tem push direto em `main`/`homolog` — o ruleset exige PR sempre,
+sem `bypass_actors` para essa regra específica (só para a exigência de
+review, e só na hora de mesclar).
+
 - **`main`** é protegida: só aceita PR com origem em `homolog`, exige os
   checks de CI (`typecheck`, `fluxo-branches`, `commitlint`, `build`) verdes,
   e exige aprovação do dono do repositório (único CODEOWNER) antes de
@@ -33,7 +54,9 @@ feature/* , fix/* , chore/* ...
   `gh pr merge --merge --admin`, ou o botão "Merge without waiting for
   requirements to be met" na interface do GitHub.
 - **`homolog`** é a branch de QA: recebe PR de qualquer branch de trabalho,
-  mas nunca de `main` — o workflow `fluxo-branches` rejeita essa direção.
+  mas nunca de `main` — o workflow `fluxo-branches` fecha automaticamente
+  qualquer PR fora do fluxo (`* -> main` que não seja `homolog`, ou
+  `main -> homolog`), com um comentário explicando o motivo.
 - Branches de trabalho saem de `homolog` (ou de `main`, se `homolog` já
   estiver com algo pendente) e seguem o padrão `tipo/descricao-curta`
   (`feat/…`, `fix/…`, `refactor/…`, `chore/…`, `docs/…`, `test/…`).
