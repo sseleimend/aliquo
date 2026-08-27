@@ -10,21 +10,37 @@ jobs:
   fluxo-branches:
     name: fluxo-branches
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
     steps:
       - name: Validar origem do merge
         env:
+          GH_TOKEN: ${{ github.token }}
           BASE: ${{ github.event.pull_request.base.ref }}
           HEAD: ${{ github.event.pull_request.head.ref }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
         run: |
           echo "PR: $HEAD -> $BASE"
 
+          # main só recebe merge de homolog — qualquer outra PR pra main é
+          # fechada na hora (a Actions não impede a criação, só o merge; isto
+          # aqui é o que chega mais perto de "não pode criar PR pra main").
           if [ "$BASE" = "main" ] && [ "$HEAD" != "homolog" ]; then
             echo "::error::main só recebe merge de homolog (esta PR tenta $HEAD -> main)."
+            if [ -n "$PR" ]; then
+              gh pr close "$PR" --repo "$REPO" \
+                --comment "Fechada automaticamente: \`main\` só aceita PR vinda de \`homolog\`. Abra a PR de \`$HEAD\` para \`homolog\` primeiro."
+            fi
             exit 1
           fi
 
           if [ "$BASE" = "homolog" ] && [ "$HEAD" = "main" ]; then
             echo "::error::homolog não pode receber merge de main."
+            if [ -n "$PR" ]; then
+              gh pr close "$PR" --repo "$REPO" \
+                --comment "Fechada automaticamente: \`homolog\` não pode receber merge de \`main\`."
+            fi
             exit 1
           fi
 
