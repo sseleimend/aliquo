@@ -26,6 +26,12 @@ feature/* , fix/* , chore/* ...
   aprovar essa PR. Ressalva técnica: GitHub não deixa autor aprovar a
   própria PR, então o dono tem bypass da exigência de review só quando ele
   mesmo está mesclando (os outros checks continuam valendo).
+
+  Na prática, quando o dono mescla a própria PR sem aprovação de ninguém, o
+  `gh pr merge` **sem flag nenhuma falha** (`the base branch policy
+  prohibits the merge`) — a CLI não aciona bypass sozinha. Use
+  `gh pr merge --merge --admin`, ou o botão "Merge without waiting for
+  requirements to be met" na interface do GitHub.
 - **`homolog`** é a branch de QA: recebe PR de qualquer branch de trabalho,
   mas nunca de `main` — o workflow `fluxo-branches` rejeita essa direção.
 - Branches de trabalho saem de `homolog` (ou de `main`, se `homolog` já
