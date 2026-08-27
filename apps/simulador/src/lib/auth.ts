@@ -1,6 +1,5 @@
 import NextAuth, { type NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import Google from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 
@@ -27,37 +26,12 @@ const providers: NextAuthConfig["providers"] = [
   }),
 ];
 
-// Google só é habilitado quando as credenciais estão configuradas (RF13).
-if (process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET) {
-  providers.push(
-    Google({
-      clientId: process.env.AUTH_GOOGLE_ID,
-      clientSecret: process.env.AUTH_GOOGLE_SECRET,
-    }),
-  );
-}
-
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
   trustHost: true,
   providers,
   pages: { signIn: "/login" },
   callbacks: {
-    async signIn({ user, account }) {
-      // Usuários que entram via Google são criados/atualizados no Prisma.
-      if (account?.provider === "google" && user.email) {
-        await prisma.user.upsert({
-          where: { email: user.email },
-          update: { name: user.name ?? undefined, image: user.image ?? undefined },
-          create: {
-            email: user.email,
-            name: user.name ?? undefined,
-            image: user.image ?? undefined,
-          },
-        });
-      }
-      return true;
-    },
     async jwt({ token, user }) {
       const email = user?.email ?? (token.email as string | undefined);
       if (email && !token.uid) {
