@@ -5,13 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 
-export function LoginForm({
-  googleEnabled,
-  callbackUrl,
-}: {
-  googleEnabled: boolean;
-  callbackUrl: string;
-}) {
+export function LoginForm({ callbackUrl }: { callbackUrl: string }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -70,24 +64,6 @@ export function LoginForm({
           {loading ? "Entrando…" : "Entrar"}
         </button>
       </form>
-
-      {googleEnabled ? (
-        <>
-          <div className="flex items-center gap-3 text-xs text-fraco">
-            <span className="h-px flex-1 bg-fio" /> ou <span className="h-px flex-1 bg-fio" />
-          </div>
-          <button
-            onClick={() => signIn("google", { callbackUrl })}
-            className="btn-secondary w-full"
-          >
-            Continuar com Google
-          </button>
-        </>
-      ) : (
-        <p className="text-center text-xs text-fraco">
-          Login com Google desativado (configure AUTH_GOOGLE_ID/SECRET no .env).
-        </p>
-      )}
 
       <p className="text-center text-sm text-tinta2">
         Não tem conta?{" "}
