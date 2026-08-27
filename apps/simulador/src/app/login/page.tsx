@@ -14,11 +14,9 @@ export default async function LoginPage({
   const session = await auth();
   if (session?.user) redirect(callbackUrl);
 
-  const googleEnabled = Boolean(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET);
-
   return (
     <AuthShell titulo="Entrar" subtitulo="Acesse o simulador tributário do Aliquo.">
-      <LoginForm googleEnabled={googleEnabled} callbackUrl={callbackUrl} />
+      <LoginForm callbackUrl={callbackUrl} />
     </AuthShell>
   );
 }
