@@ -11,17 +11,20 @@ services:
     runtime: node
     plan: free
     region: oregon
-    # Monorepo (npm workspaces): rootDir troca o cwd do build/start pra
-    # apps/simulador, mas o "npm ci" tem que rodar a partir da raiz do repo
-    # (é lá que ficam o workspaces do package.json e o lockfile) — por isso o
-    # --prefix ../... Não testado num deploy real ainda; conferir no próximo.
-    rootDir: apps/simulador
-    # DATABASE_URL só existe DENTRO do build, para o `prisma generate` resolver
-    # env("DATABASE_URL") do schema. Em runtime ela não existe de propósito: se
-    # TURSO_DATABASE_URL faltar, a aplicação falha dizendo isso, em vez de abrir
-    # um SQLite vazio e efêmero que perderia tudo no próximo restart.
-    buildCommand: npm --prefix ../.. ci && DATABASE_URL=file:./dev.db npx prisma generate && npm run build
-    startCommand: npm run start
+    # Monorepo (npm workspaces): SEM rootDir — build/start rodam a partir da
+    # raiz do repo (onde ficam o workspaces do package.json e o lockfile), e
+    # cada comando referencia apps/simulador explicitamente. A primeira
+    # tentativa usava rootDir + "npm --prefix ../.." e falhou num deploy
+    # real (prisma não achava o schema.prisma); isto aqui é o mesmo comando
+    # já testado e funcionando no CI (.github/workflows/ci.yml).
+    #
+    # DATABASE_URL só existe DENTRO do build, para o `prisma generate`
+    # resolver env("DATABASE_URL") do schema. Em runtime ela não existe de
+    # propósito: se TURSO_DATABASE_URL faltar, a aplicação falha dizendo
+    # isso, em vez de abrir um SQLite vazio e efêmero que perderia tudo no
+    # próximo restart.
+    buildCommand: npm ci && DATABASE_URL=file:./ci.db npx prisma generate --schema=apps/simulador/prisma/schema.prisma && npm run build --workspace=apps/simulador
+    startCommand: npm run start --workspace=apps/simulador
     healthCheckPath: /
     envVars:
       - key: NODE_VERSION
