@@ -18,8 +18,8 @@ export function Header() {
   return (
     <header className="sticky top-0 z-50 border-b border-border-dark bg-ink">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 sm:px-8">
-        <a href="#produto">
-          <Logo inverted />
+        <a href="#produto" className="group">
+          <Logo showIcon={false} />
         </a>
 
         <nav className="hidden items-center gap-8 md:flex">
@@ -34,13 +34,16 @@ export function Header() {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-2 md:flex">
-          <a href={`${APP_URL}/login`} className="btn-secondary">
+        <div className="hidden items-center gap-4 md:flex">
+          <a
+            href={`${APP_URL}/login`}
+            className="text-sm font-medium text-text-inverse2 transition-colors hover:text-white"
+          >
             Entrar
           </a>
           <a
             href={`${APP_URL}/cadastro`}
-            className="inline-flex items-center justify-center gap-2 rounded-sm bg-white px-5 py-3 text-sm font-medium text-ink transition-colors hover:bg-surface2"
+            className="inline-flex items-center justify-center gap-2 rounded-sm bg-white px-3.5 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-surface2"
           >
             Criar conta grátis
           </a>
