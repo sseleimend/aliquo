@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { SmoothScroll } from "@/components/SmoothScroll";
 import "./globals.css";
 
 const geistSans = localFont({
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${geistSans.variable} ${geistMono.variable} ${sora.variable}`}
     >
       <body className="bg-bg font-sans text-text-primary" suppressHydrationWarning>
+        <SmoothScroll />
         {children}
       </body>
     </html>
