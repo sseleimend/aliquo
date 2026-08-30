@@ -705,7 +705,8 @@
                                   "width": "fill_container",
                                   "content": "Nova simulação",
                                   "fontFamily": "$font",
-                                  "fontSize": 13
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -779,7 +780,8 @@
                                   "width": "fill_container",
                                   "content": "Despachantes",
                                   "fontFamily": "$font",
-                                  "fontSize": 13
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
                                 },
                                 {
                                   "type": "frame",
@@ -839,7 +841,8 @@
                                   "width": "fill_container",
                                   "content": "Conta",
                                   "fontFamily": "$font",
-                                  "fontSize": 13
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             }
@@ -9142,7 +9145,8 @@
                                   "width": "fill_container",
                                   "content": "Nova simulação",
                                   "fontFamily": "$font",
-                                  "fontSize": 13
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             },
@@ -9216,7 +9220,8 @@
                                   "width": "fill_container",
                                   "content": "Despachantes",
                                   "fontFamily": "$font",
-                                  "fontSize": 13
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
                                 },
                                 {
                                   "type": "frame",
@@ -9276,7 +9281,8 @@
                                   "width": "fill_container",
                                   "content": "Conta",
                                   "fontFamily": "$font",
-                                  "fontSize": 13
+                                  "fontSize": 13,
+                                  "fontWeight": "normal"
                                 }
                               ]
                             }
