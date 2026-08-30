@@ -10,7 +10,7 @@ export function Hero() {
           10.515 NCMs · 100% com II e IPI oficiais
         </span>
 
-        <h1 className="mt-6 max-w-3xl text-[clamp(32px,5vw,52px)] font-semibold leading-[1.1] tracking-[-0.02em] text-white">
+        <h1 className="mt-6 max-w-3xl text-[clamp(32px,5vw,52px)] font-light leading-[1.1] tracking-[-0.02em] text-white">
           O custo da sua importação, com a fonte de cada alíquota à vista.
         </h1>
 

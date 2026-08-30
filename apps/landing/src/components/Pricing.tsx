@@ -79,7 +79,7 @@ export function Pricing() {
                 )}
               </div>
               <p className="mt-3 flex items-baseline gap-1.5">
-                <span className="text-[30px] font-semibold tracking-[-0.02em] text-text-primary">
+                <span className="font-mono text-[30px] font-semibold tracking-[-0.02em] text-text-primary">
                   {p.preco}
                 </span>
                 <span className="text-[13px] text-text-tertiary">por mês</span>

@@ -11,6 +11,15 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-heading;
+  }
+}
+
 @layer components {
   /* Botão preto sólido — a ação principal em qualquer seção. */
   .btn-primary {

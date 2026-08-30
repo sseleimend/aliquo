@@ -31,7 +31,7 @@ export function TestimonialsMetrics() {
         <div className="mt-10 grid grid-cols-2 gap-6 md:grid-cols-4">
           {METRICAS.map((m) => (
             <div key={m.label}>
-              <p className="text-[28px] font-semibold text-white">{m.valor}</p>
+              <p className="font-mono text-[28px] font-semibold text-white">{m.valor}</p>
               <p className="mt-1 text-[12.5px] leading-snug text-text-inverse2">{m.label}</p>
             </div>
           ))}

@@ -104,7 +104,7 @@ export function ProductPreview() {
           {STATS.map((s) => (
             <div key={s.label} className="rounded-sm border border-border p-3">
               <p className="text-[11.5px] text-text-tertiary">{s.label}</p>
-              <p className="mt-1 text-[17px] font-semibold text-text-primary">{s.value}</p>
+              <p className="mt-1 font-mono text-[17px] font-semibold text-text-primary">{s.value}</p>
               <p className="mt-0.5 text-[11px] text-text-tertiary">{s.delta}</p>
             </div>
           ))}
@@ -125,7 +125,7 @@ export function ProductPreview() {
               {ROWS.map((r) => (
                 <tr key={r.produto} className="border-b border-border last:border-b-0">
                   <td className="px-3 py-2.5 text-text-primary">{r.produto}</td>
-                  <td className="hidden px-3 py-2.5 text-text-secondary sm:table-cell">{r.ncm}</td>
+                  <td className="hidden px-3 py-2.5 font-mono text-text-secondary sm:table-cell">{r.ncm}</td>
                   <td className="px-3 py-2.5">
                     <span
                       className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_STYLE[r.status]}`}
@@ -134,8 +134,8 @@ export function ProductPreview() {
                       {r.status}
                     </span>
                   </td>
-                  <td className="hidden px-3 py-2.5 text-text-secondary md:table-cell">{r.cambio}</td>
-                  <td className="px-3 py-2.5 text-right font-medium text-text-primary">{r.custo}</td>
+                  <td className="hidden px-3 py-2.5 font-mono text-text-secondary md:table-cell">{r.cambio}</td>
+                  <td className="px-3 py-2.5 text-right font-mono font-medium text-text-primary">{r.custo}</td>
                 </tr>
               ))}
             </tbody>

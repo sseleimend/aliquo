@@ -1,11 +1,25 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-inter",
+const geistSans = localFont({
+  src: "../fonts/geist-sans/Geist-Variable.woff2",
+  weight: "100 900",
+  variable: "--font-geist-sans",
+  display: "swap",
+});
+
+const geistMono = localFont({
+  src: "../fonts/geist-mono/GeistMono-Variable.woff2",
+  weight: "100 900",
+  variable: "--font-geist-mono",
+  display: "swap",
+});
+
+const sora = localFont({
+  src: "../fonts/sora/Sora-Variable.woff2",
+  weight: "100 800",
+  variable: "--font-sora",
   display: "swap",
 });
 
@@ -17,7 +31,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={inter.variable}>
+    <html
+      lang="pt-BR"
+      className={`${geistSans.variable} ${geistMono.variable} ${sora.variable}`}
+    >
       <body className="bg-bg font-sans text-text-primary" suppressHydrationWarning>
         {children}
       </body>
