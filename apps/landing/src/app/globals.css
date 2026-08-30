@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+@layer components {
+  /* Botão preto sólido — a ação principal em qualquer seção. */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-sm bg-ink px-5 py-3
+           text-sm font-medium text-text-inverse shadow-[0_1px_2px_rgba(11,11,15,0.15)]
+           transition-colors hover:bg-ink-2;
+  }
+  /* Botão secundário — contorno, usado para a ação de menor compromisso. */
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-sm border border-border-strong
+           bg-bg px-5 py-3 text-sm font-medium text-text-primary transition-colors
+           hover:bg-surface2;
+  }
+  .eyebrow {
+    @apply inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-accent;
+  }
+  .eyebrow-dot {
+    @apply h-1.5 w-1.5 rounded-full bg-accent;
+  }
+}
