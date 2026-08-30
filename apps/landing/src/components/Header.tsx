@@ -16,10 +16,10 @@ export function Header() {
   const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-bg/90 backdrop-blur">
+    <header className="sticky top-0 z-50 border-b border-border-dark bg-ink">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 sm:px-8">
         <a href="#produto">
-          <Logo />
+          <Logo inverted />
         </a>
 
         <nav className="hidden items-center gap-8 md:flex">
@@ -27,7 +27,7 @@ export function Header() {
             <a
               key={item.href}
               href={item.href}
-              className="text-sm font-medium text-text-secondary transition-colors hover:text-text-primary"
+              className="text-sm font-medium text-text-inverse2 transition-colors hover:text-white"
             >
               {item.label}
             </a>
@@ -38,7 +38,10 @@ export function Header() {
           <a href={`${APP_URL}/login`} className="btn-secondary">
             Entrar
           </a>
-          <a href={`${APP_URL}/cadastro`} className="btn-primary">
+          <a
+            href={`${APP_URL}/cadastro`}
+            className="inline-flex items-center justify-center gap-2 rounded-sm bg-white px-5 py-3 text-sm font-medium text-ink transition-colors hover:bg-surface2"
+          >
             Criar conta grátis
           </a>
         </div>
@@ -47,7 +50,7 @@ export function Header() {
           type="button"
           aria-label="Abrir menu"
           onClick={() => setOpen(true)}
-          className="flex h-10 w-10 items-center justify-center rounded-sm border border-border-strong text-text-primary md:hidden"
+          className="flex h-10 w-10 items-center justify-center rounded-sm border border-border-dark text-white md:hidden"
         >
           <Menu className="h-5 w-5" />
         </button>
